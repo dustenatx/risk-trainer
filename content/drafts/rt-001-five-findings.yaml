@@ -11,7 +11,7 @@ estimated_minutes: 8
 cissp_domains: [1]
 learning_objectives:
   - "Tell the difference between CVSS severity and organizational risk."
-  - "Apply all four risk responses to realistic findings."
+  - "Choose between remediation, compensating controls, transfer and acceptance for realistic findings."
   - "Identify who has the authority to accept a risk."
 
 context:
@@ -138,21 +138,23 @@ answer_key:
         accept: "Accepting an actively exploited, internet-facing flaw when a cheap fix exists isn't a defensible decision."
 
     F2:
-      preferred: avoid
-      acceptable: [avoid, mitigate_compensate]
+      preferred: mitigate_compensate
+      acceptable: [mitigate_compensate, avoid]
       key_considerations:
-        - "No vendor patches exist, so remediation would mean rebuilding the application."
-        - "An existing ERP report meets the same need. The activity creating the risk can simply stop."
         - "Top CVSS score in the set, but internal exposure and low-value data lower the actual risk."
+        - "No vendor patches exist, so remediation would mean rebuilding or replacing the server."
+        - "Isolating the server and limiting it to three users cuts the likelihood now, without spending a slot."
+        - "The ERP already produces the same report, so retiring the server removes the risk for good."
       expert_rationale: >-
         This is the trap. It has the scariest scanner score, so it's tempting to burn a
-        slot on it. But there's nothing to patch, and the server exists only to produce a
-        report the ERP already produces. Retire it. That's avoidance: you remove the risk
-        by stopping the activity. If finance can't switch before the freeze, isolate the
-        server as a stopgap.
+        slot on it. But there's nothing to patch, and the exposure is internal with no
+        customer data. Isolate it this week: move it to its own segment and limit access
+        to the three finance users. That cuts the likelihood without spending a slot.
+        Then retire it after the freeze, because the ERP already produces the report.
+        Retiring it right away is also sound if finance can switch in time.
       why_not:
         mitigate_remediate: "There's no patch to apply. A slot spent here buys a rebuild the ERP report makes unnecessary."
-        accept: "Why accept an unsupported system with critical flaws when a one-day switch removes it entirely?"
+        accept: "Why accept an unsupported system with critical flaws when isolation is cheap and retirement takes a day?"
 
     F3:
       preferred: transfer
@@ -211,10 +213,10 @@ answer_key:
 
   overall_debrief: >-
     A scanner ranks F1 and F2 highest. A manager ranks F1 and F4 highest. F2 has the top
-    CVSS score, but there's nothing to patch and a cheaper way out. F4 has no CVSS score at
-    all, yet it exposes customer data to anyone who looks. Two slots go to two fixes, and
-    the other three findings are handled with the other three responses. None of them is
-    ignored.
+    CVSS score, but there's nothing to patch, so you contain it and plan its retirement.
+    F4 has no CVSS score at all, yet it exposes customer data to anyone who looks. Two
+    slots go to two fixes, and the other three findings are handled with a compensating
+    control, transfer and a documented acceptance. None of them is ignored.
   common_traps:
     - "Spending remediation slots on the highest CVSS scores instead of the highest risks."
     - "Treating 'no CVE' as 'no risk.'"
@@ -224,6 +226,10 @@ answer_key:
     When a question asks who accepts risk, the answer is management or the risk owner,
     never the security professional. And insurance transfers financial impact, not
     responsibility.
+  job_tip: >-
+    When you take a risk to your manager, bring a decision, not a scan report: what
+    could happen, how likely it is, what you recommend, what it costs, and who has to
+    sign off.
 
 reviewed_by: null
 reviewed_on: null

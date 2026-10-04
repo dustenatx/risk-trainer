@@ -67,7 +67,7 @@ Dependencies point inward: `web` and `mcp` → `storage` → `domain`. `domain/`
 - Use CISSP terms: **avoid, mitigate, transfer, accept**. "Fix" (remediate) and "reduce" (compensating control) are forms of mitigation, never separate categories. Ignoring a risk is never valid.
 - Transfer shifts financial impact; accountability, regulatory duties and reputational impact stay. Acceptance is a documented decision by the risk owner or senior management; security recommends.
 - Organizations are fictional and labeled "(fictional)". No real company names, real CVE IDs, vendor or product names.
-- Each scenario uses at least three of the four responses. `expert_rationale` ≤ 120 words, in the owner's voice.
+- Each scenario's preferred answers cover at least three of the four responses. `expert_rationale` ≤ 120 words, in the owner's voice.
 - All content is original. Never reproduce or paraphrase ISC2 practice questions or study-guide text. "CISSP" appears only descriptively; the About page states there is no affiliation with ISC2.
 - Any learner-visible change to an approved scenario bumps `version` and returns it to `draft`.
 
