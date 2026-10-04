@@ -4,9 +4,9 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.1 — 30 Sep 2026 |
-| Status | Draft for owner review |
-| Build path | Claude Code (plan mode) builds; CodeRabbit and GitHub Actions review; the owner approves. See the Risk Trainer Build Guide. |
+| Version | 1.2 — 4 Oct 2026 (owner review: audience by difficulty, rationale rules, launch bar, peer threshold, job tip) |
+| Status | Owner-reviewed; spec review (Build Guide Step 2) next |
+| Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
 Claude Code reads this document at the start of each build group (see `AGENTS.md`). Section 5 is split into five groups (5.1–5.5), built in that order; group 5.5 is a stretch goal. Anything not written here is out of scope until the owner adds it.
@@ -47,7 +47,8 @@ It is the interactive companion to the owner's recorded lesson "Why We Don't Fix
 
 | User | Use case |
 |---|---|
-| Self-study learner (CISSP / Security+ candidate) | Works through scenarios and learns from the debrief |
+| New security analyst | Works foundational scenarios, which use workplace framing and end with an on-the-job tip |
+| CISSP candidate | Works intermediate and advanced scenarios, which use CISSP Domain 1 terms and end with an exam tip |
 | Owner as instructor | Uses a scenario live in a class or on a recording, then shows the peer distribution |
 | Hiring manager / reviewer | Opens the link from an application and completes one scenario in under 10 minutes |
 | Owner as author | Drafts scenarios with Claude through the authoring MCP server, fact-checks and edits them, then approves them for publication |
@@ -96,6 +97,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - The system SHALL define scenarios as YAML files validated by a Pydantic v2 model covering the fields in Appendix A.
 - The system SHALL require exactly one answer-key entry for every finding, and no key entries without a finding.
 - The system SHALL require each finding's `preferred` treatment to also appear in its `acceptable` list.
+- The `preferred` treatments across a scenario's findings SHALL cover at least three of the four responses (avoid, mitigate, transfer, accept); both mitigate codes count as mitigate.
+- IF `difficulty` is `foundational`, THEN `job_tip` SHALL be present. IF `difficulty` is `intermediate` or `advanced`, THEN `exam_tip` SHALL be present. Either scenario MAY include both.
 - IF the answer key's `preferred` treatments assign `mitigate_remediate` to more findings than `remediation_slots`, THEN validation SHALL fail.
 - IF a finding's `preferred` or `acceptable` treatments include `accept`, THEN its key SHALL define `approvers.correct` with at least one value.
 - IF `status` is `approved`, THEN `reviewed_by` and `reviewed_on` SHALL be present.
@@ -113,7 +116,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 
 **R4 — Repository foundation and CI.**
 - The repository SHALL have the layout defined in `AGENTS.md`.
-- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. CodeRabbit reviews the same pull request independently.
+- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), static analysis (Semgrep), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. A separate Claude review agent with read-only permissions and GitHub CodeQL review the same pull request.
 - IF any check fails, THEN the pull request SHALL be blocked from merging.
 
 ### 5.2 Group: `exercise-flow`
@@ -124,7 +127,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 
 **R6 — Exercise page.**
 - WHEN a learner opens a scenario, THEN the system SHALL show the organizational context, the remediation capacity and all five findings with their signals.
-- The system SHALL require one treatment per finding and one rationale per finding (10–600 characters). An overall note (0–1,200 characters) is optional.
+- The system SHALL require one treatment per finding.
+- WHEN a learner chooses `accept` for a finding, THEN the system SHALL require a rationale for that finding (10–600 characters). For any other treatment the rationale is optional (0–600 characters). An overall note (0–1,200 characters) is optional.
 - WHEN a learner selects `accept`, THEN the system SHALL require an approver selection for that finding.
 - WHILE the number of findings set to `mitigate_remediate` equals `remediation_slots`, the system SHALL disable further remediate selections and say why.
 - The form SHALL be fully usable by keyboard and at 360 px viewport width.
@@ -135,12 +139,12 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - The score SHALL NOT depend on the rationale text or on any AI output.
 
 **R8 — Debrief.**
-- WHEN scoring completes, THEN the system SHALL show a per-finding table (learner's choice, expert choice, points), the expert rationale, key considerations, common traps and the exam tip from the answer key.
+- WHEN scoring completes, THEN the system SHALL show a per-finding table (learner's choice, expert choice, points), the expert rationale, key considerations, common traps, and the scenario's job tip and/or exam tip from the answer key.
 - WHERE a learner chose `accept` with an approver that is not correct, the debrief SHALL state who should approve and why.
 
 **R9 — Peer distribution.**
 - WHEN a submission is scored, THEN the system SHALL record the structured choices (scenario ID and version, per-finding treatment and approver, score, timestamp). It SHALL NOT record rationale text, overall notes, IP address or user agent.
-- WHILE a scenario version has at least `PEER_MIN_SAMPLE` (default 20) recorded attempts, the debrief SHALL show the percentage of learners choosing each treatment for each finding.
+- WHILE a scenario version has at least `PEER_MIN_SAMPLE` (default 10) recorded attempts, the debrief SHALL show the percentage of learners choosing each treatment for each finding.
 - Raw attempt records SHALL expire after 180 days. Aggregate counters SHALL persist.
 
 **R10 — Static pages.** The system SHALL include About, Privacy and "The four responses" reference pages. About SHALL state that scenarios are AI-drafted, fact-checked and human-approved; that any coaching through the MCP connector is generated by the learner's own AI assistant; and that the site is not affiliated with or endorsed by ISC2.
@@ -259,15 +263,15 @@ All tools take and return JSON validated with Pydantic. Errors return `{"error":
 |---|---|---|
 | `list_scenarios` | none | Approved scenarios: `[{id, title, difficulty, estimated_minutes}]` |
 | `get_scenario` | `scenario_id` | Context, capacity and findings. No answer-key fields. |
-| `submit_answers` | `scenario_id`; `answers: [{finding_id, treatment, approver?, rationale (10–600 chars)}]` | Score (Section 7), per-finding comparison, expert rationale, key considerations, common traps, exam tip |
+| `submit_answers` | `scenario_id`; `answers: [{finding_id, treatment, approver?, rationale?}]` (rationale 10–600 chars, required for `accept`, optional otherwise) | Score (Section 7), per-finding comparison, expert rationale, key considerations, common traps, job tip and/or exam tip |
 | `coach_me` (prompt) | `scenario_id` | The coaching instructions in Appendix B, to be used with the `submit_answers` result |
 
 ## 9. Definition of done for v1 launch
 
-1. At least 8 approved scenarios covering all four treatments and all four approver roles, each fact-checked with sources listed in its approval pull request.
-2. All CI checks green; coverage targets met; CodeRabbit findings resolved on every merged pull request.
+1. At least 5 approved scenarios (2 foundational, 2 intermediate, 1 advanced). Across them, each of the four responses is the preferred answer for at least one finding, and each scenario is fact-checked with sources listed in its approval pull request.
+2. All CI checks green; coverage targets met; every review conversation resolved on every merged pull request (the branch ruleset enforces this).
 3. Deployed through the approved pipeline; edge protection, headers, alarms and the budget have been checked by hand.
-4. The authoring MCP server has been verified in MCP Inspector and used from Claude to draft at least 3 of the 8 scenarios.
+4. The authoring MCP server has been verified in MCP Inspector and used from Claude to draft at least 3 of the 5 scenarios.
 5. Playwright smoke test passes against the deployed URL: complete a scenario, see the score and the debrief.
 6. The owner has completed every scenario on a phone.
 
@@ -334,7 +338,8 @@ answer_key:
       why_not: {<treatment>: string} # optional, explains tempting wrong answers
   overall_debrief: string
   common_traps: [string]
-  exam_tip: string
+  exam_tip: string | null       # required for intermediate and advanced
+  job_tip: string | null        # required for foundational; an on-the-job tip
 reviewed_by: string | null
 reviewed_on: date | null
 ```
@@ -349,8 +354,9 @@ security manager coaches a new analyst.
 
 Flow: call get_scenario and present the context and the five findings.
 Ask the learner for a treatment (avoid, mitigate by remediating, mitigate
-with a compensating control, transfer, accept) and a one-line reason for
-each finding. If they choose accept, ask who approves it. Respect the
+with a compensating control, transfer, accept) for each finding, and a
+one-line reason (required for accept, optional otherwise). If they choose
+accept, ask who approves it. Respect the
 remediation capacity. Then call submit_answers with their answers.
 
 After scoring:
