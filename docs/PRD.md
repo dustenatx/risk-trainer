@@ -4,9 +4,9 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.1 — 30 Sep 2026 |
+| Version | 1.1 — 30 Sep 2026 (revised 4 Oct 2026: pull-request reviewer) |
 | Status | Draft for owner review |
-| Build path | Claude Code (plan mode) builds; CodeRabbit and GitHub Actions review; the owner approves. See the Risk Trainer Build Guide. |
+| Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
 Claude Code reads this document at the start of each build group (see `AGENTS.md`). Section 5 is split into five groups (5.1–5.5), built in that order; group 5.5 is a stretch goal. Anything not written here is out of scope until the owner adds it.
@@ -113,7 +113,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 
 **R4 — Repository foundation and CI.**
 - The repository SHALL have the layout defined in `AGENTS.md`.
-- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. CodeRabbit reviews the same pull request independently.
+- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), static analysis (Semgrep), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. A separate Claude review agent with read-only permissions and GitHub CodeQL review the same pull request.
 - IF any check fails, THEN the pull request SHALL be blocked from merging.
 
 ### 5.2 Group: `exercise-flow`
@@ -265,7 +265,7 @@ All tools take and return JSON validated with Pydantic. Errors return `{"error":
 ## 9. Definition of done for v1 launch
 
 1. At least 8 approved scenarios covering all four treatments and all four approver roles, each fact-checked with sources listed in its approval pull request.
-2. All CI checks green; coverage targets met; CodeRabbit findings resolved on every merged pull request.
+2. All CI checks green; coverage targets met; every review conversation resolved on every merged pull request (the branch ruleset enforces this).
 3. Deployed through the approved pipeline; edge protection, headers, alarms and the budget have been checked by hand.
 4. The authoring MCP server has been verified in MCP Inspector and used from Claude to draft at least 3 of the 8 scenarios.
 5. Playwright smoke test passes against the deployed URL: complete a scenario, see the score and the debrief.
