@@ -1,6 +1,6 @@
 id: rt-002-loud-voices
 version: 1
-status: draft
+status: approved
 title: "Loud voices, quiet risks"
 difficulty: foundational
 estimated_minutes: 8
@@ -228,5 +228,5 @@ answer_key:
     what it costs to address, and who has the authority to accept it. Pressure is useful
     information; it isn't a ranking on its own.
 
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-05
