@@ -39,3 +39,6 @@ playwright-report/
 
 # Kickoff pack archive
 *.zip
+
+# Dependency audit scratch file
+.audit-requirements.txt

@@ -1,0 +1,61 @@
+[project]
+name = "risk-trainer"
+version = "0.1.0"
+description = "Hosted, no-login web app that teaches security risk prioritization."
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "pydantic>=2.12",
+    "pyyaml>=6.0.3",
+    "typer>=0.20",
+]
+
+[project.scripts]
+rt = "risk_trainer.cli.main:app"
+
+[dependency-groups]
+dev = [
+    "mypy>=1.18",
+    "pip-audit>=2.10",
+    "pytest>=8.4",
+    "pytest-cov>=7.0",
+    "ruff>=0.14",
+    "types-pyyaml>=6.0.12",
+]
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/risk_trainer"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "T20"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+plugins = ["pydantic.mypy"]
+files = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+pythonpath = ["."]
+
+[tool.coverage.run]
+source = ["risk_trainer.domain", "risk_trainer.content"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true

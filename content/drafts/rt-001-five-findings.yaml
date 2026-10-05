@@ -1,7 +1,3 @@
-# AI-drafted example for the owner to review. NOT APPROVED.
-# Check every fact and every answer-key call against your own judgment before running `rt approve`.
-# It also serves as the reference fixture for the schema and scoring tests.
-
 id: rt-001-five-findings
 version: 1
 status: draft
