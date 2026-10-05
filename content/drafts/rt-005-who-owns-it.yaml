@@ -1,0 +1,235 @@
+id: rt-005-who-owns-it
+version: 1
+status: draft
+title: "Who owns it, who runs it"
+difficulty: advanced
+estimated_minutes: 15
+cissp_domains: [1, 2]
+learning_objectives:
+  - "Distinguish the risk owner, who is accountable and decides, from the custodian, who implements and operates controls."
+  - "Distinguish due care (doing what a reasonable organization would do) from due diligence (verifying that it is being done)."
+  - "Choose responses across linked findings, where one control or decision changes the risk on another."
+
+context:
+  organization: "Sagebrook Community Health (fictional)"
+  industry: "Healthcare: a network of 12 primary-care clinics"
+  size: "About 700 staff; a nine-person IT team with two in security"
+  risk_appetite: "Low tolerance for patient-safety incidents or patient data exposure; moderate tolerance for administrative disruption."
+  constraints:
+    - "The electronic health record (EHR) is a hosted service run by a vendor; clinicians reach it through the clinic's sign-in portal."
+    - "Billing is outsourced to a billing company whose staff use the same sign-in portal."
+    - "Under the clinic's governance policy, the Chief Medical Officer owns risk to clinical systems and patient data; IT runs the systems."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "No multi-factor authentication on the portal used for remote EHR access"
+    description: >-
+      Clinicians and the billing company's staff sign in to the EHR remotely through
+      the clinic's sign-in portal with a password alone. The portal logs show
+      password-spraying attempts against clinician accounts over the past month.
+      IT already runs an identity provider that supports multi-factor
+      authentication (MFA); turning it on for the portal and enrolling users takes
+      about two weeks.
+    asset: "Sign-in portal for remote EHR access"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Patient records in the EHR"
+      compensating_controls_available:
+        - "Alert on repeated failed sign-ins"
+      remediation_effort: medium
+      business_owner: "Chief Medical Officer"
+
+  - id: F2
+    title: "EHR vendor's audit report shows a missed backup-restore test"
+    description: >-
+      IT reviewed the EHR vendor's SOC 2 report this month, the first review in two
+      years. It lists one exception: the vendor skipped one quarterly test of
+      restoring from backup. The vendor has a corrective plan due in 60 days. The
+      clinics keep paper downtime procedures for EHR outages. The IT director has
+      offered to sign off on the risk for the clinics.
+    asset: "Hosted EHR service"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Patient records in the EHR"
+      compensating_controls_available:
+        - "Run an EHR downtime drill at each clinic before the vendor's plan is due"
+      remediation_effort: low
+      business_owner: "Chief Medical Officer"
+
+  - id: F3
+    title: "Customer access reviews required by the EHR vendor haven't been done"
+    description: >-
+      The same SOC 2 report lists controls the vendor expects each customer to
+      operate, including a quarterly review of its own users' EHR access. The clinic
+      hasn't done one in 18 months. A quick check found 40 accounts for staff who
+      have left that can still sign in. Disabling them takes a day; a quarterly
+      review takes IT and the clinic managers about two days each quarter.
+    asset: "Clinic user accounts in the EHR"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Patient records in the EHR"
+      compensating_controls_available:
+        - "Alert on sign-ins to accounts unused for 90 days"
+      remediation_effort: low
+      business_owner: "Chief Medical Officer"
+
+  - id: F4
+    title: "Billing company contract renews without breach terms"
+    description: >-
+      The billing company's staff work with patient billing records through the
+      clinic's sign-in portal. Its contract renews next month. The draft has no
+      deadline for notifying the clinic of a breach and no terms on who pays if the
+      billing company causes one. The billing company has said it will negotiate.
+      Giving its staff a separate, dedicated access path would take about six weeks.
+    asset: "Billing company contract and access"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Patient billing records"
+      compensating_controls_available:
+        - "Separate access path for billing company staff"
+      remediation_effort: high
+      business_owner: "Chief Financial Officer"
+
+  - id: F5
+    title: "Infusion pumps on the main clinical network can't be patched"
+    description: >-
+      Infusion pumps at four clinics run software with known flaws. The manufacturer
+      has to recertify any update, and it doesn't expect to before next year. The
+      pumps sit on the same network as clinic workstations. Moving them to their own
+      network segment that allows only the pump-management server takes about a week.
+    asset: "Networked infusion pumps"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Medication dosing settings"
+      compensating_controls_available:
+        - "Separate network segment allowing only the pump-management server"
+      remediation_effort: high
+      business_owner: "Chief Medical Officer"
+
+answer_key:
+  findings:
+    F1:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "Password spraying against an internet-facing portal with no MFA is strong evidence toward a high likelihood rating."
+        - "The same portal serves the billing company, so MFA here also mitigates most of F4's access risk."
+        - "Stale accounts in F3 make a password-only portal more dangerous; F1 and F3 raise each other's risk."
+      expert_rationale: >-
+        Someone is already trying passwords against this portal, and a password is all
+        that stands between them and patient records. Spend a slot on MFA. Look at what
+        else it covers: the billing company signs in through the same portal, so this
+        one change mitigates most of F4's access risk too. And it makes F3's leftover
+        accounts much harder to use from outside. IT does the work as custodian; the
+        CMO owns the risk and should know the date it's done.
+      why_not:
+        mitigate_compensate: "An alert on failed sign-ins can speed up your response, but it doesn't stop a sprayed password from working."
+        accept: "Active password spraying against patient data falls outside a low tolerance for patient data exposure."
+
+    F2:
+      preferred: accept
+      acceptable: [accept, mitigate_compensate]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "Reading the vendor's report was due diligence; it's how this exception and F3 came to light."
+        - "The vendor and IT are custodians. Under this clinic's policy the CMO owns clinical data risk and is the one to accept it."
+        - "A corrective plan with a date and paper downtime procedures keep the residual risk within tolerance for a defined period."
+      expert_rationale: >-
+        This is the custodian trap. The IT director means well, but IT runs systems; it
+        doesn't own clinical risk. Neither does the vendor. Under this clinic's policy,
+        the CMO does. The exception itself is limited: one missed test, a corrective
+        plan due in 60 days and paper downtime procedures in place. Recommend that the
+        CMO accept it in writing, with a date to confirm the vendor's plan is done. And
+        keep reading the vendor's reports every year; that review is what found this.
+      why_not:
+        mitigate_remediate: "You can't run the vendor's restore tests for them; the corrective action sits with the vendor."
+        transfer: "The vendor already holds the service; what's left is a time-limited gap with a corrective plan, not a financial exposure to shift."
+
+    F3:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "The vendor's report puts the access review on the customer; doing it is the clinic's due care."
+        - "Forty working accounts for departed staff, behind a portal with no MFA, is a direct path to patient records."
+        - "The CMO is accountable for the review happening; IT and clinic managers carry it out."
+      expert_rationale: >-
+        The vendor's report says plainly that reviewing access is the customer's job,
+        and the clinic hasn't done it in 18 months. That's a due care gap, not a vendor
+        problem. Forty departed staff can still sign in, and until F1 is done, a
+        password is all they'd need. Use the second slot: disable those accounts this
+        week and put the quarterly review on the calendar. IT and the clinic managers
+        do the review; the CMO is accountable for it happening.
+      why_not:
+        accept: "Assuming the vendor covers this misreads the report: the review is the clinic's control, and the open accounts expose patient data."
+        transfer: "The vendor can't take on a control the report assigns to the clinic, and patient data exposure stays the clinic's responsibility."
+
+    F4:
+      preferred: transfer
+      acceptable: [transfer]
+      key_considerations:
+        - "With MFA from F1 in place, the billing company's access risk drops sharply; a separate access path would duplicate that work."
+        - "What's left is contractual and financial: a notification deadline and terms on who pays if the billing company causes a breach."
+        - "Contract terms can transfer specified financial loss. The clinic's duties to patients and regulators stay with the clinic."
+      expert_rationale: >-
+        Don't spend a slot here. F1's MFA already covers the way the billing company
+        signs in, so a separate access path would cost six weeks to repeat that work.
+        What's left is the contract, and renewal is the cheapest time to change it.
+        Negotiate a breach-notification deadline and terms on who pays if they cause a
+        breach. That transfers specified financial loss. It doesn't transfer the
+        clinic's duties to its patients or regulators, which stay with the clinic.
+      why_not:
+        mitigate_remediate: "A separate access path repeats what F1's MFA already does for these users, and it takes six weeks."
+        accept: "Renewing without breach terms leaves the clinic carrying the full cost of the billing company's mistakes when the contract is the cheapest place to shift it."
+
+    F5:
+      preferred: mitigate_compensate
+      acceptable: [mitigate_compensate]
+      key_considerations:
+        - "The flaws can't be patched until the manufacturer recertifies, so the realistic option is to reduce exposure."
+        - "A dedicated segment that allows only the pump-management server cuts off most paths from a compromised workstation."
+        - "Pumps set medication doses, so this is a patient-safety risk the CMO owns, outside a low tolerance."
+      expert_rationale: >-
+        There's nothing you can safely patch yet; the manufacturer has to recertify
+        first. So reduce the exposure instead: move the pumps to their own segment that
+        talks only to the pump-management server. That's a compensating control, and it
+        doesn't need a slot. These devices set medication doses, so brief the CMO on
+        the plan and track the manufacturer's update.
+      why_not:
+        mitigate_remediate: "Patching before the manufacturer recertifies could affect how the pumps deliver medication."
+        accept: "Leaving dosing devices on the same network as workstations falls outside a low tolerance for patient-safety incidents."
+
+  overall_debrief: >-
+    The findings are linked. MFA on the portal (F1) protects clinicians and the billing
+    company, so F4 needs a contract change, not a slot. F1 and F3 raise each other's
+    risk, so the slots go to both. One SOC 2 report, read as due diligence, surfaced
+    F2 and F3. Ownership runs through all of it: IT and the vendors are custodians,
+    and under this clinic's policy the CMO owns the clinical risk and decides. F2 is
+    accepted by the CMO, F4 is transferred at renewal, and F5 gets a compensating
+    control.
+  common_traps:
+    - "Letting the custodian (IT or the vendor) accept a risk the business owner should decide on."
+    - "Assuming a hosted service's vendor handles every control, including the ones its report assigns to the customer."
+    - "Spending a slot on a finding that another response already covers."
+    - "Treating findings as independent when one makes another worse."
+  exam_tip: >-
+    The owner is accountable for a risk and decides how to respond; the custodian
+    implements and operates the controls. Due care is doing what a reasonable
+    organization would do; due diligence is verifying that it's done, including a
+    vendor's controls and your own share of them.
+
+reviewed_by: null
+reviewed_on: null
