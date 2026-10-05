@@ -1,0 +1,232 @@
+id: rt-002-loud-voices
+version: 1
+status: draft
+title: "Loud voices, quiet risks"
+difficulty: foundational
+estimated_minutes: 8
+cissp_domains: [1]
+learning_objectives:
+  - "Prioritize by risk, not by who is applying the pressure."
+  - "Recognize when removing an unused system (avoidance) beats patching it."
+  - "Use contract terms to transfer financial risk, and know who accepts residual risk."
+
+context:
+  organization: "Larkspur Ridge Credit Union (fictional)"
+  industry: "Financial services: a member-owned credit union with 12 branches and online banking"
+  size: "About 38,000 members and 220 employees; a five-person IT team with one security analyst"
+  risk_appetite: "Low tolerance for member data exposure or fraud; moderate tolerance for internal operational risk."
+  constraints:
+    - "The regulator's annual examination starts next quarter."
+    - "The CFO has asked security to close the auditor's password finding first."
+    - "The largest business member has threatened to move its accounts if it is forced to change how it sends payroll files."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Actively exploited flaw on a retired loan-rate website"
+    description: >-
+      Marketing stopped using a loan-rate microsite two years ago, but it is still
+      online. Its content-management plugin has a remote-code-execution flaw that is
+      being actively exploited. Nothing links to the site, and no one has owned it
+      since the marketing team reorganized.
+    asset: "Retired loan-rate microsite"
+    exposure: internet_facing
+    signals:
+      cvss_base: 9.8
+      known_exploited: true
+      data_involved: "Public rate tables; the server shares a network segment with staff file shares"
+      compensating_controls_available:
+        - "Block the site at the firewall"
+      remediation_effort: medium
+      business_owner: "No current owner (formerly Marketing)"
+
+  - id: F2
+    title: "Auditor finding: short minimum password length on the internal HR system"
+    description: >-
+      The internal audit report notes that the HR system accepts 8-character
+      passwords. The system is reachable only from the corporate network, and every
+      sign-in already requires multi-factor authentication. The CFO wants this closed
+      first because it appears in the audit report.
+    asset: "Internal HR system"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Employee records"
+      compensating_controls_available:
+        - "Multi-factor authentication (already in place)"
+        - "Lock accounts after repeated failed sign-ins"
+      remediation_effort: medium
+      business_owner: "VP of Human Resources"
+
+  - id: F3
+    title: "Largest business member sends payroll files over an unencrypted transfer"
+    description: >-
+      The credit union's largest business member uploads payroll files with employee
+      names and bank account numbers over an old, unencrypted file-transfer service
+      that uses one shared password. Moving them to the secure transfer channel means
+      the member must change its process, and the member has threatened to move its
+      accounts if forced to.
+    asset: "Legacy file-transfer service for business payroll files"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Payroll files with employee names and bank account numbers"
+      compensating_controls_available:
+        - "Accept connections only from the member's network address"
+        - "Rotate the shared password"
+      remediation_effort: medium
+      business_owner: "VP of Business Banking"
+
+  - id: F4
+    title: "Phone password resets verified only by name and date of birth"
+    description: >-
+      Member service representatives reset online-banking passwords over the phone
+      after the caller gives the member's name and date of birth. No one has
+      complained about the process. Adding a one-time code sent to the phone number
+      on file is a procedure change the team can make within a week.
+    asset: "Member service password-reset procedure"
+    exposure: process
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Online-banking access to member accounts"
+      compensating_controls_available:
+        - "Email the member after every reset (detects, doesn't prevent)"
+      remediation_effort: low
+      business_owner: "VP of Member Services"
+
+  - id: F5
+    title: "Mobile-app vendor contract has no breach-notification or liability terms"
+    description: >-
+      The credit union plans to sign a contract next month with a vendor that will
+      build and host its new mobile app. The draft contract has no breach-notification
+      deadline and no terms on who pays if the vendor causes a breach. The vendor has
+      said it is open to negotiating.
+    asset: "Mobile-app vendor contract"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Member data the app will process"
+      compensating_controls_available:
+        - "Security questionnaire and annual review of the vendor"
+      remediation_effort: low
+      business_owner: "VP of Digital Banking"
+
+answer_key:
+  findings:
+    F1:
+      preferred: avoid
+      acceptable: [avoid, mitigate_compensate]
+      key_considerations:
+        - "Internet-facing and actively exploited: strong evidence toward a high likelihood rating."
+        - "The site has no business purpose, so removing it costs less than keeping it patched."
+        - "It shares a network segment with staff file shares, so a compromise could reach internal systems."
+      expert_rationale: >-
+        Nobody has used this site in two years, and it's carrying an actively exploited
+        flaw on the internet. Patching it spends a slot keeping something alive that has
+        no job. Take it offline instead: that's avoidance, removing the risk by stopping
+        the activity. Confirm with marketing that nothing depends on it, archive what you
+        need, and shut it down this week. Block it at the firewall until it's gone.
+      why_not:
+        mitigate_remediate: "Patching keeps a system with no purpose alive and spends a slot doing it."
+        accept: "No one owns this system, so no one is positioned to accept its risk; leaving it running is acceptance by default. The facts strongly favor removing it."
+
+    F2:
+      preferred: accept
+      acceptable: [accept, mitigate_compensate]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "Internal-only access and multi-factor authentication are safeguards that lower the likelihood considerably."
+        - "A senior request doesn't replace a risk assessment; the finding is real but small."
+        - "The HR system's owner has the authority to accept this, with a review date and a plan to tighten the policy at the next scheduled change."
+      expert_rationale: >-
+        This is the loud voice. The CFO wants the auditor's finding closed, and I
+        understand why, but the risk is small: the system is internal-only and already
+        requires MFA. A slot here is a slot not spent on member money. Recommend that the
+        VP of Human Resources accept it, with a review date and a plan to lengthen the
+        minimum at the next scheduled change. Then brief the CFO on the reasoning. That
+        conversation is part of the job.
+      why_not:
+        mitigate_remediate: "The finding is real but small with MFA in place; a slot is worth more where member money and data are at risk."
+        avoid: "Avoiding it would mean shutting down the HR system, which isn't realistic."
+
+    F3:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "Account numbers crossing the internet unencrypted under a shared password sit well outside a low tolerance for member data exposure."
+        - "A customer's preference informs the decision but doesn't override the credit union's risk appetite."
+        - "Interim controls (one allowed network address, a new password) reduce the risk while the member moves to the secure channel."
+      expert_rationale: >-
+        This is the loud customer, and the hardest call to make politely. Payroll files
+        with account numbers are crossing the internet unencrypted under a shared
+        password. That sits well outside a low tolerance for member data exposure. Spend
+        a slot here: set a firm date, offer the member hands-on help moving to the secure
+        channel, and allow only their network address with a fresh password until they
+        switch. Keeping a member happy isn't a reason to leave their employees' data
+        exposed.
+      why_not:
+        accept: "Acceptance would fall outside the stated low tolerance for member data exposure, and keeping a customer happy doesn't change that tolerance."
+        avoid: "Avoiding it would mean dropping the member's payroll service, which loses the relationship the change is meant to keep."
+
+    F4:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "Names and dates of birth are easy to find, so this process makes account takeover much easier."
+        - "No complaints doesn't mean no risk, or that misuse would have been noticed."
+        - "The mitigation is a low-effort procedure change: a one-time code to the phone on file."
+      expert_rationale: >-
+        The quiet one, and the one fraudsters look for. Names and dates of birth are easy
+        to find, so this reset process makes account takeover much easier. No complaints
+        doesn't mean no misuse. The mitigation is a procedure change, not a project: send
+        a one-time code to the phone on file before any reset. Use your second slot here.
+      why_not:
+        mitigate_compensate: "Emailing the member after a reset helps them notice, but the money may already be gone."
+        accept: "Given the stated low tolerance for fraud, this risk falls outside the risk appetite; the low-cost mitigation makes the choice easier."
+
+    F5:
+      preferred: transfer
+      acceptable: [transfer, avoid]
+      key_considerations:
+        - "Before signing is the cheapest moment to manage vendor risk."
+        - "Breach-notification and liability terms can transfer specified financial losses to the vendor."
+        - "Duties to members and the regulator, including overseeing the vendor, stay with the credit union."
+      expert_rationale: >-
+        The contract isn't signed yet, which is the cheapest moment to manage this risk.
+        Negotiate a breach-notification deadline and liability terms before signing, so
+        a vendor failure doesn't land entirely on the credit union's budget. Remember
+        what transfer does and doesn't do: it can move specified financial losses, but
+        the credit union's duties to members and the regulator stay with it. If the
+        vendor won't agree, choosing a different vendor is also defensible.
+      why_not:
+        accept: "Signing as-is leaves the credit union carrying the full cost of a vendor breach when the contract is the cheapest place to shift it."
+        mitigate_remediate: "There's nothing to patch yet; the exposure is in the contract terms."
+
+  overall_debrief: >-
+    Two voices push on this scenario: the CFO wants F2 handled first, and the largest
+    business member wants F3 left alone. Neither request changes the assessed risk;
+    leaders set priorities through governance, not by asking loudest. The slots go to
+    mitigating F3 and F4, the two findings that put member data and money at real risk.
+    F1 is retired rather than patched (avoidance), F2 is accepted by its owner with a
+    review date, and F5 is handled in the contract before signing (transfer). Treat
+    pressure as information to weigh, not as the priority order.
+  common_traps:
+    - "Spending a slot on whatever the most senior person asks about first."
+    - "Accepting a member-data risk to keep a large customer happy."
+    - "Spending a slot patching a system nobody uses."
+    - "Treating 'nobody is complaining' as 'no risk'."
+  job_tip: >-
+    When a senior leader or a big customer pushes on a risk decision, don't argue about
+    who matters more. Put the risks side by side: what could happen, how likely it is,
+    what it costs to address, and who has the authority to accept it. Pressure is useful
+    information; it isn't a ranking on its own.
+
+reviewed_by: null
+reviewed_on: null
