@@ -4,6 +4,7 @@ Newest first. One entry per decision that changes the plan: date, decision, reas
 
 | Date | Decision | Reason | By |
 |---|---|---|---|
+| 2026-10-05 | v1 launch narrowed to groups 5.1-5.3; authoring MCP (5.4) becomes v1.1 after launch; learner MCP (5.5) becomes v1.2 stretch | Spec review finding #15: one-person scope; get the public link into applications sooner | Dusten |
 | 2026-10-04 | PRD v1.2 after owner review: audience split by difficulty (foundational = new analysts with job_tip; intermediate/advanced = CISSP with exam_tip); rationale required only for accept; launch at 5 scenarios (2/2/1); PEER_MIN_SAMPLE 10; rt-001 F2 prefers a compensating control | Less friction for reviewers on a phone, an earlier launch link, and the owner's judgment on F2 | Dusten |
 | 2026-09-30 | Add five free MCP servers, each when its build group needs it: Context7 and Semgrep (all groups, in `.mcp.json`), Playwright (group 2), HashiCorp Terraform with read-only registry tools and AWS Pricing (group 3). | Current library docs, security scanning before each PR, UI checks, accurate Terraform, and a cost check on the $0 claim. | Dusten |
 | 2026-09-30 | Build with Claude Code plan mode; review with CodeRabbit and GitHub Actions; red-team the spec with ChatGPT (free); fact-check content with Perplexity (free). Kiro, Cursor and Codex dropped. | $0 beyond the Claude subscription; less setup; the reviewer comes from a different vendor than the author. | Dusten (confirmed 2026-09-30) |
@@ -15,4 +16,4 @@ Newest first. One entry per decision that changes the plan: date, decision, reas
 
 | Date | Reviewer | Findings | Accepted | Rejected | Notes |
 |---|---|---|---|---|---|
-| | ChatGPT (free) | | | | |
+| 2026-10-05 | ChatGPT (free) | 15 | 13 (2 with changes) | 1 in part (#6: id-token is required by claude-code-action) | 1 owner decision (#15); applied as PRD v1.3 |
