@@ -62,6 +62,7 @@ Dependencies point inward: `web` and `mcp` → `storage` → `domain`. `domain/`
 - **Tests:** every requirement has a test, named with its ID where practical (`test_r17_rejects_path_outside_drafts`). Unit tests never call real AWS.
 - **Dependencies:** add one only with a one-line reason in the plan and `docs/decisions.md`.
 - **GitHub Actions:** pin third-party actions to a commit SHA.
+- **Review workflow:** The review workflow's GITHUB_TOKEN is read-only. It keeps id-token: write, which claude-code-action needs for its GitHub App token. Its --allowedTools allows only the inline-comment tool; that line is what stops the reviewer from pushing, so never widen it without the owner's approval.
 
 ## Content accuracy rules
 - Use CISSP terms: **avoid, mitigate, transfer, accept**. "Fix" (remediate) and "reduce" (compensating control) are forms of mitigation, never separate categories. Ignoring a risk is never valid.
@@ -78,6 +79,7 @@ Reviewers (CodeRabbit and humans) should flag, as high severity:
 - Any AWS resource or setting on the cost list above.
 - Wildcard IAM, secrets in code or config, unpinned third-party actions, inline scripts.
 - A requirement ID implemented without a test, or a behavior change without a PRD update.
+- Any change that widens the review workflow's permissions or --allowedTools.
 
 ## Definition of done for any task
 1. `make check` passes locally.
