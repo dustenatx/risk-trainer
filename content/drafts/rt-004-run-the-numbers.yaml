@@ -1,0 +1,242 @@
+id: rt-004-run-the-numbers
+version: 1
+status: draft
+title: "Run the numbers, not the checklist"
+difficulty: intermediate
+estimated_minutes: 12
+cissp_domains: [1]
+learning_objectives:
+  - "Use annualized loss expectancy (ALE = SLE × ARO) to compare a risk with the cost of responding to it."
+  - "Judge whether a control is cost-justified by comparing its annual cost with the reduction in ALE it delivers."
+  - "Recognize that passing an audit or a compliance scan doesn't show that risk is within tolerance."
+
+context:
+  organization: "Coldline Freight (fictional)"
+  industry: "Logistics: refrigerated trucking and warehousing for food and pharmaceutical shippers"
+  size: "About 1,100 employees, 3 warehouses and 400 trucks; a 12-person IT team with three in security"
+  risk_appetite: "Low tolerance for cold-chain spoilage or customer data exposure; moderate tolerance for routine equipment losses."
+  constraints:
+    - "The annual SOC 2 audit starts next month."
+    - "The largest customer's annual security questionnaire is due in three weeks."
+    - "Loss figures below are the risk team's estimates from incident history and industry data. SLE is the single loss expectancy; ARO is the annualized rate of occurrence."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Ransomware could stop the warehouse management system for about five days"
+    description: >-
+      A ransomware outage of the warehouse management system would stop shipping for
+      about five days. The team estimates the SLE at $2 million and the ARO at 0.1
+      (once in ten years), given the endpoint detection and tested offline backups
+      already in place. Two proposals are on the table: a 24/7 managed detection
+      service at $350,000 a year, which an industry framework recommends, or a
+      business-interruption rider on the cyber insurance policy at $45,000 a year,
+      covering losses up to $2 million after a $100,000 deductible.
+    asset: "Warehouse management system"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Shipment, inventory and customer order data"
+      compensating_controls_available:
+        - "24/7 managed detection and response service ($350,000 a year)"
+      remediation_effort: high
+      business_owner: "Chief Operating Officer"
+
+  - id: F2
+    title: "Driver tablets are lost or stolen about 20 times a year"
+    description: >-
+      Drivers lose or have stolen about 20 route tablets a year. Each loss costs about
+      $1,500 for the device, setup and driver downtime. The tablets are encrypted and
+      enrolled in device management with remote wipe. A vendor proposes locked cab
+      mounts for all 400 trucks at $160,000 installed, expected to last three years
+      and to cut losses about in half.
+    asset: "Driver route tablets"
+    exposure: process
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Route and delivery data; tablets are encrypted"
+      compensating_controls_available:
+        - "Locked cab mounts ($160,000 for the fleet)"
+      remediation_effort: medium
+      business_owner: "VP of Fleet Operations"
+
+  - id: F3
+    title: "Shipment portal shows other customers' shipments when the ID in the URL changes"
+    description: >-
+      A tester found that any signed-in customer on the shipment portal can view
+      another customer's shipment details by changing the shipment number in the URL.
+      The portal was in scope for last year's SOC 2 audit, which reported no
+      exceptions. The team estimates the SLE at $800,000 (notification costs and
+      contract penalties) and the ARO at 0.3. Adding the missing authorization check
+      is about two weeks of work to build, test and release, roughly $20,000.
+    asset: "Customer shipment portal"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Customer names, addresses, shipment contents and delivery schedules"
+      compensating_controls_available:
+        - "Alert on unusual numbers of shipment lookups per account"
+      remediation_effort: medium
+      business_owner: "VP of Customer Operations"
+
+  - id: F4
+    title: "Hardened FTP server still running for a customer that left"
+    description: >-
+      An internet-facing FTP server was set up to exchange shipping manifests with a
+      customer that left 14 months ago. It still holds old manifests. The server is
+      hardened to an industry configuration benchmark and passes the monthly
+      compliance scan. The team estimates the SLE at $300,000 and the ARO at 0.2.
+      Decommissioning it takes about a day; no current customer uses it.
+    asset: "Legacy FTP server for shipping manifests"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Old shipping manifests with customer addresses"
+      compensating_controls_available:
+        - "Keep it hardened and limit access to known addresses"
+      remediation_effort: low
+      business_owner: "VP of Customer Operations"
+
+  - id: F5
+    title: "Cold-chain monitoring console uses the vendor's default password"
+    description: >-
+      The console that monitors and sets warehouse freezer temperatures is reachable
+      from the internet and still uses the vendor's default administrator password.
+      Default passwords for this model are published online. The team estimates the
+      SLE at $450,000 (a warehouse of spoiled pharmaceutical product) and the ARO at
+      0.5. Changing the credentials and restricting the console to the VPN takes
+      about a day.
+    asset: "Cold-chain temperature monitoring console"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Freezer temperature settings and alarms"
+      compensating_controls_available:
+        - "Alert on any change to temperature settings"
+      remediation_effort: low
+      business_owner: "VP of Warehouse Operations"
+
+answer_key:
+  findings:
+    F1:
+      preferred: transfer
+      acceptable: [transfer, accept]
+      approvers:
+        correct: [business_risk_owner, senior_management]
+        acceptable: []
+      key_considerations:
+        - "ALE is $2 million × 0.1 = $200,000 a year, with strong controls already in place."
+        - "Even if managed detection prevented every loss, it would save at most $200,000 a year against a $350,000 cost."
+        - "The $45,000 rider transfers specified financial loss, subject to its deductible, limits and exclusions; customer commitments, recovery work and reputation stay with Coldline."
+      expert_rationale: >-
+        Run the numbers: $2 million times 0.1 is an ALE of $200,000. Even if managed
+        detection prevented every loss, it would save at most $200,000 a year against
+        a $350,000 cost, so on these estimates it isn't cost-justified, even with a
+        framework recommending it. The controls that matter are already in
+        place. What's left is a rare, expensive event, a common profile for transfer.
+        The $45,000 rider covers much of that loss, within its deductible and limits.
+        Accepting it is defensible if the COO signs off knowing the figure. Either way,
+        it doesn't need a slot.
+      why_not:
+        mitigate_compensate: "At $350,000 a year, it costs more than the most it could reduce a $200,000 annual loss, whatever the framework recommends."
+        avoid: "Avoiding it would mean running the warehouses without their management system."
+
+    F2:
+      preferred: accept
+      acceptable: [accept]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "ALE is $1,500 × 20 = $30,000 a year."
+        - "The mounts cost about $53,000 a year over three years and save about $15,000 a year in losses."
+        - "Encryption and remote wipe make a data breach from a lost tablet unlikely, so the remaining loss is mostly the cost of the device, within a moderate tolerance for equipment losses."
+      expert_rationale: >-
+        The numbers point clearly here. The ALE is $30,000 a year. The mounts cost about
+        $53,000 a year over their life and would save about $15,000 of it. That's
+        spending more than the risk is worth. Encryption and remote wipe make a data
+        breach from a lost tablet unlikely, so what's left is mostly the cost of the
+        device. Recommend that the VP of Fleet Operations accept it, and revisit if the
+        loss rate climbs.
+      why_not:
+        mitigate_compensate: "The mounts cost more each year than the losses they would prevent."
+        transfer: "Insuring $1,500 devices typically costs more in premiums and deductibles than it recovers."
+
+    F3:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "ALE is $800,000 × 0.3 = $240,000 a year, against a one-time cost of about $20,000."
+        - "A clean audit means the controls tested met the criteria; it doesn't show this flaw is absent."
+        - "Exposing customer data sits outside a low tolerance for customer data exposure."
+      expert_rationale: >-
+        This is the checkbox trap. The portal passed SOC 2, and that's easy to read as
+        safe. But an audit tests a defined set of controls; it didn't find this flaw,
+        and a tester did. The ALE is $240,000 a year, and the change costs about
+        $20,000 once. Spend a slot here and add the authorization check. Then check
+        the logs for signs that anyone has already used it.
+      why_not:
+        accept: "A clean audit doesn't change an estimated $240,000 annual loss, and customer data exposure is outside the stated tolerance."
+        mitigate_compensate: "Alerting on unusual lookups helps you notice misuse, but customers' data is still exposed until the authorization check is added."
+
+    F4:
+      preferred: avoid
+      acceptable: [avoid, mitigate_compensate]
+      key_considerations:
+        - "ALE is $300,000 × 0.2 = $60,000 a year for a server with no business purpose."
+        - "Passing a configuration scan shows the server matches a benchmark, not that keeping it is worth the risk."
+        - "Decommissioning takes about a day and avoids the server's internet exposure; old manifests and any backups still follow the retention policy."
+      expert_rationale: >-
+        It's hardened and it passes the scan, so it looks fine on the compliance
+        report. But it serves a customer that left 14 months ago and still holds their
+        manifests on the internet. That's an estimated $60,000 a year in risk for no
+        business value. Decommission it: that's avoidance, ending the activity that
+        creates the risk. Archive or delete the old manifests under your retention
+        policy, then shut it down. No slot needed.
+      why_not:
+        accept: "Accepting $60,000 a year of risk for a server nobody uses doesn't make sense when removing it takes a day."
+
+    F5:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "ALE is $450,000 × 0.5 = $225,000 a year, against a day of work."
+        - "Published default passwords on an internet-facing console make a high ARO estimate reasonable."
+        - "Spoiled product is a cold-chain loss, outside a low tolerance."
+      expert_rationale: >-
+        A day of work against an estimated $225,000 a year. The console that sets
+        freezer temperatures is on the internet with a password anyone can look up.
+        Use your second slot: change the credentials and put the console behind the
+        VPN. An alert on temperature changes is worth adding too: it helps you respond
+        faster, but it doesn't stop someone from changing a setting.
+      why_not:
+        accept: "An estimated $225,000 a year in cold-chain risk is outside a low tolerance, and the change costs a day."
+
+  overall_debrief: >-
+    Two findings look safe because they pass a compliance check: the portal passed
+    SOC 2 and the FTP server passes its scan. The estimates point the other way. The slots go
+    to F3 and F5, where a small one-time cost addresses a large ALE. F1 is transferred,
+    because the proposed detection service costs more than the estimated annual loss.
+    F2 is accepted, because the mounts cost more than they save. F4 is removed
+    (avoidance). Compliance results are useful evidence within their scope, and ALE
+    is one input alongside risk tolerance and contract duties; neither replaces the
+    other.
+  common_traps:
+    - "Treating a clean audit or a passed scan as proof that a risk is low."
+    - "Buying a control because a framework recommends it, without comparing its cost with the ALE."
+    - "Spending more each year on a control than the loss it prevents."
+    - "Assuming insurance moves customer commitments and reputation, not just financial loss."
+  exam_tip: >-
+    ALE = SLE × ARO. On cost alone, a control is justified when its annual cost is less
+    than the reduction in ALE it delivers; risk tolerance and legal or contractual
+    duties also weigh in. A passed audit is evidence within its scope, not proof that
+    risk is within tolerance.
+
+reviewed_by: null
+reviewed_on: null
