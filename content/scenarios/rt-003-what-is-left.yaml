@@ -1,6 +1,6 @@
 id: rt-003-what-is-left
 version: 1
-status: draft
+status: approved
 title: "What's left after the controls"
 difficulty: intermediate
 estimated_minutes: 10
@@ -234,5 +234,5 @@ answer_key:
     response, and don't assume a planned or untested control delivers its intended
     reduction.
 
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-05

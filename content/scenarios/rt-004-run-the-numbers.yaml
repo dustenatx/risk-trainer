@@ -1,6 +1,6 @@
 id: rt-004-run-the-numbers
 version: 1
-status: draft
+status: approved
 title: "Run the numbers, not the checklist"
 difficulty: intermediate
 estimated_minutes: 12
@@ -238,5 +238,5 @@ answer_key:
     duties also weigh in. A passed audit is evidence within its scope, not proof that
     risk is within tolerance.
 
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-05

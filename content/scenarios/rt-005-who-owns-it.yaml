@@ -1,6 +1,6 @@
 id: rt-005-who-owns-it
 version: 1
-status: draft
+status: approved
 title: "Who owns it, who runs it"
 difficulty: advanced
 estimated_minutes: 15
@@ -231,5 +231,5 @@ answer_key:
     organization would do; due diligence is verifying that it's done, including a
     vendor's controls and your own share of them.
 
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-05
