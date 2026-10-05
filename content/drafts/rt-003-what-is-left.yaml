@@ -1,0 +1,238 @@
+id: rt-003-what-is-left
+version: 1
+status: draft
+title: "What's left after the controls"
+difficulty: intermediate
+estimated_minutes: 10
+cissp_domains: [1, 3]
+learning_objectives:
+  - "Distinguish inherent risk from residual risk, and base the decision on residual risk."
+  - "Judge residual risk on controls that are in place and tested, not on what a plan says."
+  - "Tell a detective control apart from one that reduces the likelihood or impact of a loss."
+
+context:
+  organization: "Ironbend Fabrication (fictional)"
+  industry: "Manufacturing: a single plant producing machined metal parts"
+  size: "About 650 employees; a seven-person IT team with two in security, and a separate plant-engineering team that runs the factory-floor (OT) systems"
+  risk_appetite: "Low tolerance for safety incidents or unplanned production downtime; moderate tolerance for internal IT risk."
+  constraints:
+    - "Changes to OT systems can only be made during the planned maintenance shutdown in six weeks."
+    - "A vendor is offering an OT anomaly-detection platform at a quarter-end discount, and leadership has asked whether it would cover these findings."
+    - "Plant engineering has two people available for security work before the shutdown."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Production-line operator workstations run an unsupported operating system"
+    description: >-
+      The operator workstations (HMIs) on the production lines run an operating system
+      that no longer receives security updates. They sit on an isolated OT network
+      segment with no internet access, their USB ports are locked, and application
+      allowlisting has been enforced for two years. Upgrading them requires the line
+      vendor to re-certify its software, which it quotes at four months.
+    asset: "Production-line HMI workstations"
+    exposure: segmented
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Production line control screens; no personal data"
+      compensating_controls_available:
+        - "Monitor HMI network traffic with the proposed anomaly-detection platform"
+      remediation_effort: high
+      business_owner: "Plant Manager"
+
+  - id: F2
+    title: "Press vendor has always-on remote access into the OT network"
+    description: >-
+      The stamping-press vendor connects to the OT network for support through a
+      remote-desktop connection that stays open around the clock. Its technicians
+      share one account, and the connection doesn't require multi-factor
+      authentication. IT already runs a jump host with named accounts, MFA and
+      session approval for other vendors; moving this vendor onto it is a
+      configuration task of about two days.
+    asset: "Vendor remote-access connection to the press line"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Direct access to press-line controllers"
+      compensating_controls_available:
+        - "Monitor vendor sessions with the proposed anomaly-detection platform"
+      remediation_effort: low
+      business_owner: "Plant Engineering Manager"
+
+  - id: F3
+    title: "Abandoned cloud monitoring gateway still connects OT to the internet"
+    description: >-
+      Facilities trialed a cloud service that monitors the plant's air compressors.
+      The trial ended five months ago and no one uses the dashboard, but the gateway
+      device is still installed on the OT network and still sends data out to the
+      internet. Facilities says the compressors run normally without it.
+    asset: "Compressor monitoring gateway"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Compressor telemetry; a network path from the internet into OT"
+      compensating_controls_available:
+        - "Firewall rule limiting the gateway to the monitoring service's address"
+        - "Monitor the gateway with the proposed anomaly-detection platform"
+      remediation_effort: low
+      business_owner: "Facilities Manager"
+
+  - id: F4
+    title: "PLCs are programmed from engineers' everyday laptops"
+    description: >-
+      Plant engineers program the line controllers (PLCs) from the same laptops they
+      use for email and web browsing, then plug them into the OT network. The laptops
+      run endpoint protection. Two dedicated engineering workstations that stay inside
+      the OT network would cost about the same as one year of the anomaly-detection
+      platform, and can be installed during the shutdown.
+    asset: "Engineering laptops used to program PLCs"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "PLC programs that control production equipment"
+      compensating_controls_available:
+        - "Detect unexpected PLC changes with the proposed anomaly-detection platform"
+      remediation_effort: medium
+      business_owner: "Plant Engineering Manager"
+
+  - id: F5
+    title: "PLC program backups have no tested restore"
+    description: >-
+      A nightly job backs up every PLC program to a file server on the corporate
+      network, which the same administrator accounts can reach. The plant's business
+      continuity plan lists the backups as the recovery control for ransomware. No one
+      has tested a restore. Copying the backups to offline storage takes an hour a
+      month, and a restore test fits into the shutdown schedule.
+    asset: "PLC program backups"
+    exposure: internal
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "PLC programs needed to restart production"
+      compensating_controls_available:
+        - "Monthly offline copy of the backups"
+        - "Restore test during the shutdown"
+      remediation_effort: low
+      business_owner: "Plant Engineering Manager"
+
+answer_key:
+  findings:
+    F1:
+      preferred: accept
+      acceptable: [accept, mitigate_compensate]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "Inherent risk is high: an unsupported operating system on production equipment."
+        - "Assessed residual risk is low: segmentation, no internet, locked USB ports and allowlisting address the likely attack paths, as long as they stay in place and are checked."
+        - "The plant manager, as the business owner of the production lines, is the one to accept the residual risk, with a review date tied to the vendor's re-certification."
+      expert_rationale: >-
+        On inherent risk alone this looks urgent. But look at what's already in place:
+        an isolated segment, no internet, locked USB ports and allowlisting that's been
+        enforced for two years. The assessed residual risk is low, and a four-month upgrade
+        won't fit in the shutdown anyway. Recommend that the plant manager accept it in
+        writing, with a review date tied to the vendor's re-certification. Then
+        check those controls on a schedule, because they're what the acceptance
+        rests on.
+      why_not:
+        mitigate_remediate: "The upgrade takes four months of vendor work and spends a slot on risk that existing controls already hold low."
+        avoid: "Avoiding it would mean shutting down the production lines."
+
+    F2:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "With no controls in place, the residual risk stays close to the inherent risk."
+        - "A shared, always-on account without MFA gives anyone with that password a direct path to the press controllers."
+        - "IT's existing jump host makes the change low effort and low cost."
+      expert_rationale: >-
+        Here the residual risk stays close to the inherent risk, because no control in
+        place reduces it: a shared account, no MFA and a connection that's open all day,
+        straight into the press controllers. A stolen password could be enough to affect production. IT
+        already runs a jump host with named accounts, MFA and session approval for
+        other vendors, so spend a slot and move this vendor onto it. Two days of work
+        replaces a shared, always-open path into OT with named, approved sessions.
+      why_not:
+        mitigate_compensate: "Watching the sessions can speed up your response, but it doesn't stop a stolen shared password from working."
+        accept: "With no controls in place, the residual risk falls outside a low tolerance for downtime and safety incidents."
+
+    F3:
+      preferred: avoid
+      acceptable: [avoid, mitigate_compensate]
+      key_considerations:
+        - "The gateway has no business purpose: the trial is over and the compressors run without it."
+        - "It adds an internet path into OT that the segmentation elsewhere is meant to prevent."
+        - "Removing it avoids the gateway's internet-exposure risk and costs less than any control placed around it."
+      expert_rationale: >-
+        The trial ended five months ago, nobody reads the dashboard, and the compressors
+        run without it. What it still does is connect OT to the internet, which works
+        against the segmentation the plant relies on elsewhere, including on F1. Remove
+        the gateway: that's avoidance, taking away the risk by ending the activity.
+        Confirm with facilities first, then pull it before the shutdown. No slot
+        needed.
+      why_not:
+        mitigate_compensate: "A firewall rule narrows the path, but it keeps an unused device connected to the internet."
+        accept: "Accepting an internet path into OT for a device nobody uses gives up risk reduction that costs almost nothing."
+
+    F4:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "Endpoint protection lowers the likelihood of a compromised laptop, but residual risk stays high because one phished laptop can reach the PLCs directly."
+        - "Dedicated workstations that stay inside OT remove the path from email and the web to the controllers."
+        - "The anomaly-detection platform is a detective control: it could help you respond to an unexpected PLC change and limit the damage, but it doesn't make the change less likely."
+      expert_rationale: >-
+        Endpoint protection helps, but it doesn't change the basic problem: a laptop
+        that opens email in the morning can be programming a press controller that
+        afternoon. One successful phish could reach production. Use the second slot
+        for dedicated engineering workstations that stay inside the OT network, and
+        install them during the shutdown. The anomaly-detection platform could help
+        you respond after a PLC changes; the workstations make the bad change much
+        less likely in the first place.
+      why_not:
+        accept: "Residual risk stays high because a phished laptop can reach the controllers, which falls outside a low tolerance for safety incidents."
+
+    F5:
+      preferred: mitigate_compensate
+      acceptable: [mitigate_compensate, mitigate_remediate]
+      key_considerations:
+        - "The continuity plan counts the backups as a control, but until a restore is tested, you can't assume they deliver the risk reduction the plan claims."
+        - "Backups reachable from the same network and admin accounts could be encrypted along with everything else."
+        - "An offline copy limits the impact of ransomware, a restore test shows whether recovery works, and neither needs a slot."
+      expert_rationale: >-
+        On paper this is covered: nightly backups, listed in the continuity plan. In
+        practice, nobody knows whether they restore, and ransomware that reaches the
+        file server could take the backups too. Until it's tested, don't give the
+        control the credit the plan does. Start the monthly offline copy now and run a
+        restore test during the shutdown. Neither needs a slot, and afterwards you'll
+        know what the control is worth.
+      why_not:
+        accept: "Accepting because backups exist relies on a control nobody has verified."
+
+  overall_debrief: >-
+    The anomaly-detection platform shows up as an option on four findings. It's a
+    detective control: it could speed up your response and limit damage, but it
+    doesn't make an attack less likely on any of them. The slots go to F2 and F4,
+    where nothing in place stops an attacker from reaching the controllers. F1 looks worst on inherent risk, but its controls hold the
+    assessed residual risk low, so its business owner accepts it. F3 is removed
+    (avoidance), and F5 gets an offline copy and a restore test, because you can't
+    assume an untested control works.
+  common_traps:
+    - "Ranking findings by inherent risk and ignoring the controls already in place."
+    - "Assuming a control is effective because it's in a plan, without testing it."
+    - "Treating a detective control as if it prevents the attack."
+    - "Spending a slot on a system whose existing controls already hold residual risk low."
+  exam_tip: >-
+    Inherent risk is the risk before controls; residual risk is what remains after them.
+    Weigh the residual risk against the organization's risk tolerance when choosing a
+    response, and don't assume a planned or untested control delivers its intended
+    reduction.
+
+reviewed_by: null
+reviewed_on: null
