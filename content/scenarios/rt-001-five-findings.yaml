@@ -1,6 +1,6 @@
 id: rt-001-five-findings
 version: 1
-status: draft
+status: approved
 title: "Five findings, two fixes"
 difficulty: foundational
 estimated_minutes: 8
@@ -229,5 +229,5 @@ answer_key:
     could happen, how likely it is, what you recommend, what it costs, and who has to
     sign off.
 
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-05
