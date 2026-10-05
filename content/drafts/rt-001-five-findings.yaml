@@ -126,16 +126,16 @@ answer_key:
       preferred: mitigate_remediate
       acceptable: [mitigate_remediate]
       key_considerations:
-        - "Internet-facing and actively exploited, so the likelihood is high, not theoretical."
-        - "A patch exists and the effort is low: removing the risk costs little compared with the impact."
+        - "Internet-facing and actively exploited: strong evidence for a high likelihood rating."
+        - "A patch exists and the effort is low: closing the flaw costs little compared with the impact."
         - "A compromise gives an attacker a foothold on the internal network."
       expert_rationale: >-
         The easiest call in the set. It faces the internet, it's being exploited right
         now, and the fix is a 30-minute patch. High likelihood, high impact, low cost to
-        remove. Spend a slot here and get it done before the change freeze.
+        close. Spend a slot here and get it done before the change freeze.
       why_not:
         mitigate_compensate: "Device restrictions narrow who can connect. They don't close the flaw on the appliance itself."
-        accept: "Accepting an actively exploited, internet-facing flaw when a cheap fix exists isn't a defensible decision."
+        accept: "Acceptance would need an informed decision within a low risk tolerance, and these facts (actively exploited, internet-facing, a cheap patch) strongly favor mitigation."
 
     F2:
       preferred: mitigate_compensate
@@ -144,7 +144,7 @@ answer_key:
         - "Top CVSS score in the set, but internal exposure and low-value data lower the actual risk."
         - "No vendor patches exist, so remediation would mean rebuilding or replacing the server."
         - "Isolating the server and limiting it to three users cuts the likelihood now, without spending a slot."
-        - "The ERP already produces the same report, so retiring the server removes the risk for good."
+        - "The ERP already produces the same report, so retiring the server avoids this risk altogether; plan the switch so finance keeps its report."
       expert_rationale: >-
         This is the trap. It has the scariest scanner score, so it's tempting to burn a
         slot on it. But there's nothing to patch, and the exposure is internal with no
@@ -165,33 +165,33 @@ answer_key:
       key_considerations:
         - "Controls are already in place. What's left is residual risk: unlikely but costly."
         - "Rare, high-cost losses are the classic case for transfer."
-        - "Insurance transfers the financial impact, not accountability. The existing controls must stay."
+        - "Insurance can transfer specified financial losses, subject to policy terms. Accountability stays with the company, and insurers typically expect the existing controls to remain."
       expert_rationale: >-
         You've already mitigated this. Dual approval and the callback do the heavy
-        lifting. What's left is rare but expensive, which is the textbook profile for
-        transfer. Buy the rider and keep the controls; insurers expect them. Accepting the
+        lifting. What's left is rare but expensive, a common profile for transfer. Buy
+        the rider and keep the controls; insurers typically expect them. Accepting the
         residual risk is also defensible if the CFO signs off knowingly. Either way, it
         doesn't need a remediation slot.
       why_not:
-        mitigate_remediate: "There's no vulnerability to fix. It's a process risk with controls already in place."
+        mitigate_remediate: "There's no software flaw to patch. It's a process risk, and its key controls are already in place."
         avoid: "Avoiding it would mean no longer paying vendors electronically, which isn't realistic."
 
     F4:
       preferred: mitigate_remediate
       acceptable: [mitigate_remediate]
       key_considerations:
-        - "No CVE and no CVSS score, but anyone who finds the bucket can download customer data. High likelihood, high impact."
+        - "No CVE and no CVSS score, but the bucket allows public listing, so anyone who finds it can download customer data: a strong case for high likelihood and high impact."
         - "The fix is a low-effort configuration change with no downtime."
-        - "Breach notification duties, regulatory exposure and customer trust can't be transferred to an insurer."
+        - "Insurance may cover some costs, but breach notification duties, regulatory exposure and customer trust stay with the company."
       expert_rationale: >-
         The finding scanners rank lowest and managers should rank highest. No CVE, no
         CVSS, just customer data readable by anyone who looks. Use your second slot and
         fix it today; it's a configuration change. Then check whether anyone has already
         accessed it, because that question may start your incident response process.
       why_not:
-        mitigate_compensate: "Logging tells you after the data is gone."
+        mitigate_compensate: "Logging detects access and helps an investigation, but it doesn't prevent the exposure."
         transfer: "Insurance may cover some costs, but notification duties, regulators and customer trust stay with you."
-        accept: "Knowingly leaving customer data publicly exposed isn't a risk any owner should sign off on."
+        accept: "With a low tolerance for customer-data exposure and a no-downtime fix available, acceptance falls outside the company's stated risk appetite."
 
     F5:
       preferred: accept
@@ -202,30 +202,32 @@ answer_key:
       key_considerations:
         - "Low impact (titles only) and low likelihood (users must be signed in and on the internal network)."
         - "A vendor fix is scheduled, so document the acceptance with a review date."
-        - "The wiki's business owner accepts the risk. IT runs the system and security recommends, but neither owns the risk."
+        - "The wiki's business owner has the authority to accept this risk. IT runs the system and security recommends; neither owns the risk here."
       expert_rationale: >-
         Low likelihood, low impact, and a fix already on the vendor's calendar. Accept it,
         but properly: write it down, set a review date for when the patch ships, and get
-        the wiki's owner to sign. Escalating to the executive team works, but it spends
-        their attention on a decision the owner has the authority to make.
+        the wiki's owner to sign. Escalating to the executive team also works, but the
+        owner already has the authority to decide, so it doesn't need to go higher.
       why_not:
         mitigate_remediate: "You can't fix it yourself before the vendor ships the patch, and a slot here is wasted."
 
   overall_debrief: >-
     A scanner ranks F1 and F2 highest. A manager ranks F1 and F4 highest. F2 has the top
-    CVSS score, but there's nothing to patch, so you contain it and plan its retirement.
-    F4 has no CVSS score at all, yet it exposes customer data to anyone who looks. Two
-    slots go to two fixes, and the other three findings are handled with a compensating
-    control, transfer and a documented acceptance. None of them is ignored.
+    CVSS score, but there's nothing to patch, so you contain it now (mitigation) and
+    retire it later (avoidance). F4 has no CVSS score at all, yet it exposes customer
+    data to anyone who finds the bucket. Two slots go to two fixes, and the other three
+    findings are handled with a compensating control, transfer and a documented
+    acceptance. None of them is ignored.
   common_traps:
     - "Spending remediation slots on the highest CVSS scores instead of the highest risks."
     - "Treating 'no CVE' as 'no risk.'"
-    - "Letting the security team or IT operations sign a risk acceptance."
+    - "Letting the security team or IT operations accept a risk they don't have the authority to accept."
     - "Treating insurance as a replacement for controls."
   exam_tip: >-
-    When a question asks who accepts risk, the answer is management or the risk owner,
-    never the security professional. And insurance transfers financial impact, not
-    responsibility.
+    When a question asks who accepts risk, the answer is the risk owner or management
+    with delegated authority. Security assesses and advises; it doesn't accept the risk
+    it reports. And insurance can transfer specified financial losses, not
+    accountability.
   job_tip: >-
     When you take a risk to your manager, bring a decision, not a scan report: what
     could happen, how likely it is, what you recommend, what it costs, and who has to
