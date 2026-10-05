@@ -1,0 +1,233 @@
+id: rt-001-five-findings
+version: 1
+status: draft
+title: "Five findings, two fixes"
+difficulty: foundational
+estimated_minutes: 8
+cissp_domains: [1]
+learning_objectives:
+  - "Tell the difference between CVSS severity and organizational risk."
+  - "Choose between remediation, compensating controls, transfer and acceptance for realistic findings."
+  - "Identify who has the authority to accept a risk."
+
+context:
+  organization: "Tallgrass Outfitters (fictional)"
+  industry: "Specialty retail: 30 stores plus e-commerce"
+  size: "About 400 employees; a six-person IT team with one security analyst"
+  risk_appetite: "Low tolerance for customer-data exposure or payment disruption; moderate tolerance for internal operational risk."
+  constraints:
+    - "The holiday change freeze starts in two weeks."
+    - "A third-party processor tokenizes payments, so no card numbers are stored in company systems."
+    - "The cyber insurance policy renews next month."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Critical remote-code-execution flaw on the internet-facing VPN appliance"
+    description: >-
+      The vendor has released a patch for a remote-code-execution flaw in the VPN
+      appliance that store managers and remote staff use. The flaw is being actively
+      exploited. Patching needs a 30-minute outage after hours.
+    asset: "Remote-access VPN appliance"
+    exposure: internet_facing
+    signals:
+      cvss_base: 9.8
+      known_exploited: true
+      data_involved: "Network access to internal systems"
+      compensating_controls_available:
+        - "Allow VPN connections only from company-managed devices (partial)"
+      remediation_effort: low
+      business_owner: "Director of IT"
+
+  - id: F2
+    title: "Unsupported operating system on the legacy inventory reporting server"
+    description: >-
+      An on-premises server runs an operating system that no longer receives security
+      updates. Scanners report several critical vulnerabilities. Its only job is a
+      weekly inventory report that three people in finance use. The ERP system the
+      company already licenses has a built-in report covering the same data; switching
+      would take finance about a day.
+    asset: "Legacy inventory reporting server"
+    exposure: internal
+    signals:
+      cvss_base: 9.8
+      known_exploited: false
+      data_involved: "Inventory and cost data (no customer data)"
+      compensating_controls_available:
+        - "Move the server to an isolated network segment"
+        - "Restrict access to the three finance users"
+      remediation_effort: high
+      business_owner: "Controller (Finance)"
+
+  - id: F3
+    title: "Residual wire-fraud risk from business email compromise"
+    description: >-
+      Finance already requires dual approval and a callback to a known phone number
+      before changing a vendor's bank details. A tabletop exercise showed a skilled
+      attacker could still succeed on rare occasions, and a single fraudulent payment
+      could reach $250,000. The insurance broker is offering a social-engineering
+      fraud rider at renewal.
+    asset: "Accounts payable process"
+    exposure: process
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Vendor banking details"
+      compensating_controls_available:
+        - "Dual approval (already in place)"
+        - "Callback verification (already in place)"
+      remediation_effort: medium
+      business_owner: "Chief Financial Officer"
+
+  - id: F4
+    title: "Customer database backups in a publicly listable storage bucket"
+    description: >-
+      A cloud storage bucket receives nightly copies of the customer database: names,
+      email and shipping addresses, and order history. It was set to allow public
+      listing during a migration last year and never changed back. Payment data is
+      tokenized and not included. Fixing the access policy is a configuration change
+      with no downtime.
+    asset: "Cloud backup storage bucket"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Customer personal data (no payment card data)"
+      compensating_controls_available:
+        - "Turn on access logging (detects access, doesn't prevent it)"
+      remediation_effort: low
+      business_owner: "Director of E-commerce"
+
+  - id: F5
+    title: "Information-disclosure flaw in the internal wiki"
+    description: >-
+      A signed-in wiki user can see the titles, but not the contents, of pages in
+      restricted spaces. The wiki is reachable only from the corporate network. The
+      vendor has scheduled a fix for its next release, in about 60 days.
+    asset: "Internal wiki (IT runs it; Store Operations owns it)"
+    exposure: internal
+    signals:
+      cvss_base: 4.3
+      known_exploited: false
+      data_involved: "Page titles only"
+      compensating_controls_available:
+        - "Rename sensitive page titles until the fix ships"
+      remediation_effort: low
+      business_owner: "VP of Store Operations"
+
+answer_key:
+  findings:
+    F1:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "Internet-facing and actively exploited: strong evidence for a high likelihood rating."
+        - "A patch exists and the effort is low: closing the flaw costs little compared with the impact."
+        - "A compromise gives an attacker a foothold on the internal network."
+      expert_rationale: >-
+        The easiest call in the set. It faces the internet, it's being exploited right
+        now, and the fix is a 30-minute patch. High likelihood, high impact, low cost to
+        close. Spend a slot here and get it done before the change freeze.
+      why_not:
+        mitigate_compensate: "Device restrictions narrow who can connect. They don't close the flaw on the appliance itself."
+        accept: "Acceptance would need an informed decision within a low risk tolerance, and these facts (actively exploited, internet-facing, a cheap patch) strongly favor mitigation."
+
+    F2:
+      preferred: mitigate_compensate
+      acceptable: [mitigate_compensate, avoid]
+      key_considerations:
+        - "Top CVSS score in the set, but internal exposure and low-value data lower the actual risk."
+        - "No vendor patches exist, so remediation would mean rebuilding or replacing the server."
+        - "Isolating the server and limiting it to three users cuts the likelihood now, without spending a slot."
+        - "The ERP already produces the same report, so retiring the server avoids this risk altogether; plan the switch so finance keeps its report."
+      expert_rationale: >-
+        This is the trap. It has the scariest scanner score, so it's tempting to burn a
+        slot on it. But there's nothing to patch, and the exposure is internal with no
+        customer data. Isolate it this week: move it to its own segment and limit access
+        to the three finance users. That cuts the likelihood without spending a slot.
+        Then retire it after the freeze, because the ERP already produces the report.
+        Retiring it right away is also sound if finance can switch in time.
+      why_not:
+        mitigate_remediate: "There's no patch to apply. A slot spent here buys a rebuild the ERP report makes unnecessary."
+        accept: "Why accept an unsupported system with critical flaws when isolation is cheap and retirement takes a day?"
+
+    F3:
+      preferred: transfer
+      acceptable: [transfer, accept]
+      approvers:
+        correct: [business_risk_owner, senior_management]
+        acceptable: []
+      key_considerations:
+        - "Controls are already in place. What's left is residual risk: unlikely but costly."
+        - "Rare, high-cost losses are the classic case for transfer."
+        - "Insurance can transfer specified financial losses, subject to policy terms. Accountability stays with the company, and insurers typically expect the existing controls to remain."
+      expert_rationale: >-
+        You've already mitigated this. Dual approval and the callback do the heavy
+        lifting. What's left is rare but expensive, a common profile for transfer. Buy
+        the rider and keep the controls; insurers typically expect them. Accepting the
+        residual risk is also defensible if the CFO signs off knowingly. Either way, it
+        doesn't need a remediation slot.
+      why_not:
+        mitigate_remediate: "There's no software flaw to patch. It's a process risk, and its key controls are already in place."
+        avoid: "Avoiding it would mean no longer paying vendors electronically, which isn't realistic."
+
+    F4:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "No CVE and no CVSS score, but the bucket allows public listing, so anyone who finds it can download customer data: a strong case for high likelihood and high impact."
+        - "The fix is a low-effort configuration change with no downtime."
+        - "Insurance may cover some costs, but breach notification duties, regulatory exposure and customer trust stay with the company."
+      expert_rationale: >-
+        The finding scanners rank lowest and managers should rank highest. No CVE, no
+        CVSS, just customer data readable by anyone who looks. Use your second slot and
+        fix it today; it's a configuration change. Then check whether anyone has already
+        accessed it, because that question may start your incident response process.
+      why_not:
+        mitigate_compensate: "Logging detects access and helps an investigation, but it doesn't prevent the exposure."
+        transfer: "Insurance may cover some costs, but notification duties, regulators and customer trust stay with you."
+        accept: "With a low tolerance for customer-data exposure and a no-downtime fix available, acceptance falls outside the company's stated risk appetite."
+
+    F5:
+      preferred: accept
+      acceptable: [accept, mitigate_compensate]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "Low impact (titles only) and low likelihood (users must be signed in and on the internal network)."
+        - "A vendor fix is scheduled, so document the acceptance with a review date."
+        - "The wiki's business owner has the authority to accept this risk. IT runs the system and security recommends; neither owns the risk here."
+      expert_rationale: >-
+        Low likelihood, low impact, and a fix already on the vendor's calendar. Accept it,
+        but properly: write it down, set a review date for when the patch ships, and get
+        the wiki's owner to sign. Escalating to the executive team also works, but the
+        owner already has the authority to decide, so it doesn't need to go higher.
+      why_not:
+        mitigate_remediate: "You can't fix it yourself before the vendor ships the patch, and a slot here is wasted."
+
+  overall_debrief: >-
+    A scanner ranks F1 and F2 highest. A manager ranks F1 and F4 highest. F2 has the top
+    CVSS score, but there's nothing to patch, so you contain it now (mitigation) and
+    retire it later (avoidance). F4 has no CVSS score at all, yet it exposes customer
+    data to anyone who finds the bucket. Two slots go to two fixes, and the other three
+    findings are handled with a compensating control, transfer and a documented
+    acceptance. None of them is ignored.
+  common_traps:
+    - "Spending remediation slots on the highest CVSS scores instead of the highest risks."
+    - "Treating 'no CVE' as 'no risk.'"
+    - "Letting the security team or IT operations accept a risk they don't have the authority to accept."
+    - "Treating insurance as a replacement for controls."
+  exam_tip: >-
+    When a question asks who accepts risk, the answer is the risk owner or management
+    with delegated authority. Security assesses and advises; it doesn't accept the risk
+    it reports. And insurance can transfer specified financial losses, not
+    accountability.
+  job_tip: >-
+    When you take a risk to your manager, bring a decision, not a scan report: what
+    could happen, how likely it is, what you recommend, what it costs, and who has to
+    sign off.
+
+reviewed_by: null
+reviewed_on: null
