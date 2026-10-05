@@ -4,12 +4,12 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.2 — 4 Oct 2026 (owner review: audience by difficulty, rationale rules, launch bar, peer threshold, job tip) |
-| Status | Owner-reviewed; spec review (Build Guide Step 2) next |
+| Version | 1.3 — 5 Oct 2026 (spec review: 15 ChatGPT findings triaged; v1 launch narrowed to groups 5.1–5.3) |
+| Status | Owner-reviewed and spec-reviewed; ready for group 5.1 |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
-Claude Code reads this document at the start of each build group (see `AGENTS.md`). Section 5 is split into five groups (5.1–5.5), built in that order; group 5.5 is a stretch goal. Anything not written here is out of scope until the owner adds it.
+Claude Code reads this document at the start of each build group (see `AGENTS.md`). Section 5 is split into five groups (5.1–5.5), built in that order. Groups 5.1–5.3 make up the v1 launch; group 5.4 follows as v1.1; group 5.5 is a stretch goal (v1.2). Anything not written here is out of scope until the owner adds it.
 
 ---
 
@@ -22,7 +22,7 @@ Risk Trainer is a hosted, no-login web app that teaches security risk prioritiza
 3. once enough attempts exist, how other learners answered, and
 4. optionally, AI coaching in their own Claude through the Risk Trainer MCP connector, grounded in that scenario's debrief (stretch goal, group 5.5).
 
-The app itself makes no LLM calls. The owner drafts scenarios with Claude through a local authoring MCP server (group 5.4) and approves every one by hand.
+The app itself makes no LLM calls. The owner drafts scenarios with Claude, in a chat for the launch set and through a local authoring MCP server after launch (group 5.4), and approves every one by hand.
 
 It is the interactive companion to the owner's recorded lesson "Why We Don't Fix Everything: How Security Teams Prioritize Risk." It is aligned to CISSP Domain 1 (Security and Risk Management) concepts.
 
@@ -33,7 +33,7 @@ It is the interactive companion to the owner's recorded lesson "Why We Don't Fix
 - G2. Be shareable: one public URL usable in instructor applications, YouTube videos and live classes.
 - G3. Stay accurate: no learner ever sees scenario content that the owner has not approved.
 - G4. No AI dependency at runtime: the web exercise needs no LLM. AI coaching is optional and runs on the learner's own Claude.
-- G5. Be production-grade at $0: least-privilege IAM, edge protection, cost caps, observability and CI/CD with a human approval gate, all within AWS always-free limits and with no paid AI API.
+- G5. Be production-grade at $0: least-privilege IAM, edge protection, hard usage ceilings with budget alerts for detection, observability and CI/CD with a human approval gate, all within AWS always-free limits and with no paid AI API.
 
 ### Non-goals (v1)
 - User accounts, logins, progress tracking or certificates.
@@ -103,6 +103,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - IF a finding's `preferred` or `acceptable` treatments include `accept`, THEN its key SHALL define `approvers.correct` with at least one value.
 - IF `status` is `approved`, THEN `reviewed_by` and `reviewed_on` SHALL be present.
 - Finding IDs SHALL be unique within a scenario, and scenario IDs SHALL be unique across the repository.
+- Scenario IDs SHALL match `^rt-[0-9]{3}-[a-z0-9]+(-[a-z0-9]+)*$` and be at most 64 characters. Finding IDs SHALL be `F1` to `F5`.
+- `security_team` SHALL NOT appear in any finding's `approvers.correct` or `approvers.acceptable`: security advises on risk but never accepts it.
 - `context.organization` SHALL end with "(fictional)".
 
 **R2 — Validation CLI.** As the author, I want one command that tells me exactly what is wrong.
@@ -116,7 +118,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 
 **R4 — Repository foundation and CI.**
 - The repository SHALL have the layout defined in `AGENTS.md`.
-- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), static analysis (Semgrep), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. A separate Claude review agent with read-only permissions and GitHub CodeQL review the same pull request.
+- WHEN a pull request is opened or updated, THEN CI SHALL run lint (ruff), type check (mypy), tests (pytest), `rt validate`, secret scanning (gitleaks), static analysis (Semgrep), dependency audit (pip-audit), and `terraform fmt -check` / `validate` plus an IaC security scan (checkov) once `infra/` exists. A separate Claude review agent and GitHub CodeQL review the same pull request.
+- The review workflow SHALL trigger on `pull_request` only (never `pull_request_target`), pin every action to a commit SHA, and grant the job only `contents: read`, `pull-requests: read`, `issues: read` and `id-token: write` (claude-code-action needs it to obtain its GitHub App token). Its only secret SHALL be `CLAUDE_CODE_OAUTH_TOKEN`, and its only allowed tool SHALL be the inline-comment tool. That tool list, not the token, is what keeps the reviewer from pushing.
 - IF any check fails, THEN the pull request SHALL be blocked from merging.
 
 ### 5.2 Group: `exercise-flow`
@@ -135,6 +138,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 
 **R7 — Submission and scoring.**
 - WHEN a learner submits, THEN the server SHALL re-validate every constraint in R6 and reject violations with HTTP 422 and a message the learner can understand.
+- The server SHALL accept a submission only if it has exactly one answer for each of the scenario's finding IDs, with no duplicate or unknown IDs.
+- The server SHALL reject request bodies larger than 32 KB with HTTP 413 before parsing them.
 - The system SHALL score each finding deterministically per Section 7 and show the total as points and as a percentage.
 - The score SHALL NOT depend on the rationale text or on any AI output.
 
@@ -145,25 +150,26 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 **R9 — Peer distribution.**
 - WHEN a submission is scored, THEN the system SHALL record the structured choices (scenario ID and version, per-finding treatment and approver, score, timestamp). It SHALL NOT record rationale text, overall notes, IP address or user agent.
 - WHILE a scenario version has at least `PEER_MIN_SAMPLE` (default 10) recorded attempts, the debrief SHALL show the percentage of learners choosing each treatment for each finding.
-- Raw attempt records SHALL expire after 180 days. Aggregate counters SHALL persist.
+- Raw attempt records SHALL carry a DynamoDB TTL of the submission time plus 180 days, and every read SHALL exclude records past that time (DynamoDB deletes expired items later, on its own schedule). Aggregate counters SHALL persist.
 
 **R10 — Static pages.** The system SHALL include About, Privacy and "The four responses" reference pages. About SHALL state that scenarios are AI-drafted, fact-checked and human-approved; that any coaching through the MCP connector is generated by the learner's own AI assistant; and that the site is not affiliated with or endorsed by ISC2.
 
 ### 5.3 Group: `aws-deployment`
 
-**R11 — Infrastructure as code.** All AWS resources SHALL be defined in Terraform under `infra/`, with remote state in S3 using native state locking (`use_lockfile = true`) and no DynamoDB lock table.
+**R11 — Infrastructure as code.** All AWS resources SHALL be defined in Terraform under `infra/`, with remote state in S3 using native state locking (`use_lockfile = true`) and no DynamoDB lock table. S3 is not always-free: the state bucket SHALL hold only Terraform state (expected under 1 MB), whose storage and request cost rounds to $0.00 a month.
 
 **R12 — Edge and security.**
 - The system SHALL be served only over HTTPS through CloudFront.
 - WHERE the AWS account is eligible, the distribution SHALL be subscribed to CloudFront's Free flat-rate plan and SHALL use its included WAF, with a rate-based rule per client IP.
 - IF the account is not eligible, THEN the system SHALL NOT add a paid standalone WAF; it SHALL rely on application rate limits (R13) and Lambda reserved concurrency.
+- Before group 5.3 is built, the owner SHALL confirm in the AWS console that the account (Paid plan) is eligible for the Free flat-rate plan and record the result in `docs/decisions.md`.
 - CloudFront SHALL attach a response-headers policy enforcing HSTS, a strict Content-Security-Policy (no inline scripts, no third-party script origins), X-Content-Type-Options, Referrer-Policy and frame-ancestors 'none'.
 - The application origin SHALL NOT be publicly reachable except through CloudFront.
 
 **R13 — Compute, data and cost ceilings.**
 - The app SHALL run on AWS Lambda (Python) behind CloudFront, with reserved concurrency set by `LAMBDA_RESERVED_CONCURRENCY` (default 5).
-- Session and attempt data SHALL live in DynamoDB in provisioned-capacity mode, within the always-free allowance, with TTL enabled.
-- The application SHALL rate-limit each session to `REQUESTS_PER_SESSION_PER_MINUTE` (default 60) and return HTTP 429 above it.
+- Session and attempt data SHALL live in DynamoDB in provisioned-capacity mode with TTL enabled. Provisioned capacity across all tables SHALL total no more than 25 RCU and 25 WCU, with auto scaling off, and stored data SHALL stay under 1 GB (the always-free allowance is 25 RCU, 25 WCU and 25 GB).
+- The application SHALL rate-limit each session to `REQUESTS_PER_SESSION_PER_MINUTE` (default 60) and return HTTP 429 above it. A new session resets this limit, so it is a courtesy limit, not an abuse control; the abuse backstops are the WAF per-IP rate rule (where eligible) and Lambda reserved concurrency.
 - Secrets SHALL live in SSM Parameter Store SecureString (standard tier) and SHALL NOT be in the repository or in Lambda environment variables in plaintext.
 - CloudWatch log groups SHALL keep logs for 14 days.
 
@@ -176,9 +182,9 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - Logs SHALL be structured JSON with a request ID. Rationale text SHALL never be logged.
 - The system SHALL emit metrics for attempts, 429 responses and, once group 5.5 ships, MCP tool calls. Custom metrics SHALL stay within the always-free allowance.
 - Alarms SHALL notify the owner by email (SNS) on sustained 5xx errors, Lambda errors and Lambda throttles.
-- An AWS Budgets monthly budget SHALL alert at any spend above `MONTHLY_BUDGET_USD` (default 1).
+- AWS Budgets SHALL alert by email on any spend beyond the Free Tier (Zero spend budget) and above `MONTHLY_BUDGET_USD` (default 1). Budgets detect spend, can lag by hours, and cap nothing. Spending is capped by Lambda reserved concurrency, DynamoDB provisioned capacity (it throttles instead of billing more), the CloudFront flat-rate plan's no-overage terms, and the rate limits in R13.
 
-### 5.4 Group: `authoring-mcp`
+### 5.4 Group: `authoring-mcp` (v1.1, after launch)
 
 **R16 — Authoring MCP server.** As the author, I want Claude to draft and check scenarios through tools I control.
 - WHEN the author runs `rt mcp`, THEN the CLI SHALL start a local MCP server over stdio, built with the official MCP Python SDK.
@@ -189,6 +195,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 **R17 — Draft safety.**
 - WHEN `save_draft` is called, THEN the server SHALL validate the scenario (R1) and write it only if validation passes.
 - The server SHALL write only under `content/drafts/`, SHALL reject any path that resolves outside it, and SHALL force `status: draft`, `reviewed_by: null` and `reviewed_on: null`.
+- The server SHALL build the file name only from the validated scenario ID (R1 pattern), SHALL refuse to write through or onto a symlink, and SHALL write atomically (a temporary file in the same directory, then a rename).
 - IF a scenario ID already exists in `content/scenarios/`, THEN `save_draft` SHALL refuse and name the conflict.
 - Tests SHALL call every tool in-process, and the owner SHALL verify the server in MCP Inspector before first use with Claude.
 
@@ -196,16 +203,19 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - WHEN the author runs `rt preview`, THEN the CLI SHALL start the app locally with drafts visible and clearly labeled "DRAFT — not published."
 - Preview mode SHALL NOT be available in the deployed environment.
 
-### 5.5 Group: `learner-mcp` (stretch, v1.1)
+### 5.5 Group: `learner-mcp` (stretch, v1.2)
 
 **R19 — Public learner MCP endpoint.**
 - The deployed app SHALL serve an MCP endpoint at `/mcp` using stateless streamable HTTP with JSON responses, from the same Lambda as the web app.
 - The endpoint SHALL expose the tools `list_scenarios`, `get_scenario` and `submit_answers`, and the prompt `coach_me` (contracts in Section 8.2).
-- The endpoint SHALL require no login and SHALL be read-only apart from recording attempts as in R9.
+- The endpoint SHALL require no login and SHALL be read-only: it records no attempts and updates no aggregates.
+- The endpoint SHALL NOT use cookies or browser CSRF tokens. It SHALL validate the Host header against the deployed hostname, reject any request whose Origin header is present and not on an explicit allow-list, and send no permissive CORS headers. Tests SHALL cover these checks both directly and through CloudFront.
+- The endpoint SHALL enforce an endpoint-wide request cap (`MCP_REQUESTS_PER_MINUTE`, default 60) rather than a per-IP limit, because connector traffic arrives from the AI provider's servers.
 
 **R20 — Learner MCP safety.**
 - `get_scenario` SHALL NEVER return answer-key content. Only `submit_answers` returns it, after scoring.
-- Only approved scenarios SHALL be reachable. Inputs SHALL be validated with the same rules as R7, and the same rate limits as R13 SHALL apply.
+- Only approved scenarios SHALL be reachable. Inputs SHALL be validated with the same rules as R7, including exactly one answer per finding and the 32 KB body limit.
+- `submit_answers` SHALL score and return the debrief but SHALL NOT record an attempt, so peer statistics come only from the web exercise.
 - Tool and prompt descriptions SHALL be static strings in code, never built from stored content.
 - Rationale text submitted through MCP SHALL NOT be stored or logged (same as R9).
 
@@ -218,10 +228,10 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 | Area | Requirement |
 |---|---|
 | Security | OWASP ASVS Level 1 baseline. Signed session cookie (HttpOnly, Secure, SameSite=Lax); CSRF token on every state-changing request; server-side input length limits; Jinja autoescape on; htmx vendored and served from the app's own origin. MCP servers follow the least-privilege tool sets in R16 and R19. |
-| Privacy | No accounts and no PII collected. Free text is not persisted and not logged, whether it arrives through the web or MCP. Privacy page states exactly what is stored and for how long. |
+| Privacy | No accounts and no direct identifiers (name, email, IP address, user agent) in application data. The app keeps a pseudonymous session ID in a signed cookie and records structured choices with a timestamp per attempt (R9). Free text is not persisted or logged, whether it arrives through the web or MCP. Outside the app: CloudWatch Logs (14 days; request IDs, no IP addresses logged by the app), CloudFront standard logging off, AWS WAF sampled requests (include IP addresses; AWS keeps them for up to 3 hours), and GitHub Actions logs (no learner data). The Privacy page lists each of these with its retention. |
 | Reliability | No runtime dependency on any LLM. The web exercise works whether or not the MCP endpoint exists. |
 | Performance | p95 server time under 500 ms for web routes at demo load (warm). Cold starts of up to about 5 s are acceptable for v1. |
-| Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. A $1 budget alert catches any drift. |
+| Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. The hard ceilings in R13 and R15 cap spend; budget alerts only detect drift. |
 | Accessibility | WCAG 2.2 AA target: labels on all inputs, visible focus, color never the only signal, usable at 360 px. |
 | Maintainability | Python ≥ 3.12, fully typed; mypy strict on `risk_trainer/domain` and `risk_trainer/content`; test coverage ≥ 85% on the domain and content packages. |
 | Error handling | Typed domain exceptions; no stack traces shown to users; error pages show a correlation ID that matches the logs. |
@@ -271,11 +281,14 @@ All tools take and return JSON validated with Pydantic. Errors return `{"error":
 1. At least 5 approved scenarios (2 foundational, 2 intermediate, 1 advanced). Across them, each of the four responses is the preferred answer for at least one finding, and each scenario is fact-checked with sources listed in its approval pull request.
 2. All CI checks green; coverage targets met; every review conversation resolved on every merged pull request (the branch ruleset enforces this).
 3. Deployed through the approved pipeline; edge protection, headers, alarms and the budget have been checked by hand.
-4. The authoring MCP server has been verified in MCP Inspector and used from Claude to draft at least 3 of the 5 scenarios.
-5. Playwright smoke test passes against the deployed URL: complete a scenario, see the score and the debrief.
-6. The owner has completed every scenario on a phone.
+4. Playwright smoke test passes against the deployed URL: complete a scenario, see the score and the debrief.
+5. The owner has completed every scenario on a phone.
 
-Group 5.5 (learner MCP) is not required for the v1 launch.
+v1 launches after groups 5.1–5.3. The scenarios may be drafted in a Claude chat.
+
+**v1.1 (after launch):** group 5.4. The authoring MCP server has been verified in MCP Inspector and used from Claude to draft at least 2 new scenarios.
+
+**v1.2 (stretch):** group 5.5, the learner MCP endpoint.
 
 ## 10. Deferred decisions (resolve in the Claude Code plan for the group that needs them)
 
