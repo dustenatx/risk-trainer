@@ -4,7 +4,7 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.3 — 5 Oct 2026 (spec review: 15 ChatGPT findings triaged; v1 launch narrowed to groups 5.1–5.3) |
+| Version | 1.4 — 5 Oct 2026 (group 5.1 plan: stricter content rules, file/folder rules, retire semantics, Python 3.14) |
 | Status | Owner-reviewed and spec-reviewed; ready for group 5.1 |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
@@ -106,15 +106,21 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - Scenario IDs SHALL match `^rt-[0-9]{3}-[a-z0-9]+(-[a-z0-9]+)*$` and be at most 64 characters. Finding IDs SHALL be `F1` to `F5`.
 - `security_team` SHALL NOT appear in any finding's `approvers.correct` or `approvers.acceptable`: security advises on risk but never accepts it.
 - `context.organization` SHALL end with "(fictional)".
+- IF neither a finding's `preferred` nor its `acceptable` treatments include `accept`, THEN its key SHALL NOT define `approvers`. No approver SHALL appear in both `approvers.correct` and `approvers.acceptable`.
+- Each `expert_rationale` SHALL be at most 120 words; each finding's `key_considerations` SHALL have 2–4 items; `cvss_base` SHALL be null or 0.0–10.0; `cissp_domains` SHALL be unique values from 1 to 8.
+- No text field SHALL contain a CVE identifier (`CVE-YYYY-NNNN…`).
+- Unknown fields, duplicate YAML keys and type coercion (for example `"1"` for an integer) SHALL fail validation.
 
 **R2 — Validation CLI.** As the author, I want one command that tells me exactly what is wrong.
 - WHEN the author runs `rt validate`, THEN the CLI SHALL validate every file under `content/` and print file, field path and message for each error.
 - WHEN validation fails, THEN the CLI SHALL exit non-zero.
+- Each scenario file SHALL be named `<id>.yaml`. Files in `content/drafts/` SHALL have `status: draft` with `reviewed_by` and `reviewed_on` null; files in `content/scenarios/` SHALL be `approved` or `retired`, with `reviewed_by` and `reviewed_on` set. Symlinks and files outside those two folders SHALL fail validation.
 
 **R3 — Approval workflow.** As the author, I want approval to be an explicit human act.
 - WHEN the author runs `rt approve <scenario-id> --reviewer "<name>"`, THEN the CLI SHALL validate the scenario, set `status: approved`, `reviewed_by` and `reviewed_on` (today, ISO date), and move the file from `content/drafts/` to `content/scenarios/`.
 - IF validation fails, THEN the CLI SHALL refuse to approve and leave the file unchanged.
-- WHEN the author runs `rt retire <scenario-id>`, THEN the CLI SHALL set `status: retired`, and the build SHALL exclude it.
+- WHEN the author runs `rt retire <scenario-id>`, THEN the CLI SHALL set `status: retired`, and the build SHALL exclude it. Only an approved scenario can be retired; the file stays in `content/scenarios/` and keeps `reviewed_by` and `reviewed_on`.
+- `rt approve` and `rt retire` SHALL change only the top-level `status`, `reviewed_by` and `reviewed_on` lines (comments and formatting elsewhere are preserved), SHALL re-validate the result before writing, and SHALL write atomically (a temporary file in the same folder, then a rename). `rt approve` SHALL refuse if the target file already exists.
 
 **R4 — Repository foundation and CI.**
 - The repository SHALL have the layout defined in `AGENTS.md`.
@@ -233,7 +239,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 | Performance | p95 server time under 500 ms for web routes at demo load (warm). Cold starts of up to about 5 s are acceptable for v1. |
 | Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. The hard ceilings in R13 and R15 cap spend; budget alerts only detect drift. |
 | Accessibility | WCAG 2.2 AA target: labels on all inputs, visible focus, color never the only signal, usable at 360 px. |
-| Maintainability | Python ≥ 3.12, fully typed; mypy strict on `risk_trainer/domain` and `risk_trainer/content`; test coverage ≥ 85% on the domain and content packages. |
+| Maintainability | Python 3.14 (the newest GA Lambda managed runtime as of Oct 2026), fully typed; mypy strict on `risk_trainer/domain` and `risk_trainer/content`; test coverage ≥ 85% on the domain and content packages. |
 | Error handling | Typed domain exceptions; no stack traces shown to users; error pages show a correlation ID that matches the logs. |
 
 ## 7. Scoring model
