@@ -1,6 +1,6 @@
 # AGENTS.md — rules for every AI agent in this repo
 
-Claude Code (through `CLAUDE.md`) and CodeRabbit both read this file. It is the single source of rules: product context, stack, layout, content accuracy, human gates and review guidelines. Requirements live in `docs/PRD.md`, and the PRD wins any conflict.
+Claude Code reads this file through `CLAUDE.md`, both on the owner's Mac and as the pull-request review agent in GitHub Actions. It is the single source of rules: product context, stack, layout, content accuracy, human gates and review guidelines. Requirements live in `docs/PRD.md`, and the PRD wins any conflict.
 
 ## Product in one paragraph
 Risk Trainer is a hosted, no-login web app that teaches security risk prioritization. A learner gets a scenario with five findings and limited remediation capacity, chooses a CISSP risk response for each (avoid / mitigate / transfer / accept), and gets a deterministic score, an expert debrief and a peer comparison. The app makes no LLM calls. The owner drafts scenarios with Claude through a local authoring MCP server; learners can optionally get coached in their own Claude through a public, read-only MCP endpoint. The whole thing must run at $0 beyond the owner's Claude subscription.
@@ -18,7 +18,7 @@ Principles: accuracy before volume (only owner-approved content reaches learners
 - Run `terraform apply` or `terraform destroy`, or change anything in `infra/bootstrap/`.
 - Push to `main`, merge pull requests, or change branch rulesets or environment protection.
 - Create, rotate or print secrets. Ask the owner to do it and say exactly what's needed.
-- Dismiss a security finding from CodeRabbit or CI. List it for the owner instead.
+- Dismiss a security finding from the review agent, CodeQL, Semgrep or CI. List it for the owner instead.
 
 ## Stack (fixed)
 - **Python ≥ 3.12** (newest version Lambda supports as a managed runtime), **uv** with a committed lockfile.
@@ -26,7 +26,7 @@ Principles: accuracy before volume (only owner-approved content reaches learners
 - **Pydantic v2** (and `pydantic-settings`), **PyYAML** `safe_load` only, **Typer** for the `rt` CLI.
 - **MCP:** the official MCP Python SDK (`mcp` package). Authoring server over stdio; learner server as stateless streamable HTTP with JSON responses.
 - **AWS:** CloudFront (Free flat-rate plan where eligible), Lambda, DynamoDB (provisioned, always-free capacity, TTL), SSM Parameter Store (standard tier), CloudWatch, SNS, AWS Budgets. **Terraform ≥ 1.10**, S3 backend with `use_lockfile = true`.
-- **Quality:** ruff (including `S` security rules), mypy (strict for `domain/` and `content/`), pytest + pytest-cov, moto, Playwright (Python), gitleaks, pip-audit, checkov. `make check` runs lint, types, tests and `rt validate`.
+- **Quality:** ruff (including `S` security rules), mypy (strict for `domain/` and `content/`), pytest + pytest-cov, moto, Playwright (Python); gitleaks, pip-audit, checkov and Semgrep in CI; CodeQL default setup on GitHub. `make check` runs lint, types, tests and `rt validate`.
 - **CI/CD:** GitHub Actions, OIDC to AWS, Terraform apply gated by the protected `prod` environment.
 
 ## Cost rules ($0 target)
@@ -73,7 +73,7 @@ Dependencies point inward: `web` and `mcp` → `storage` → `domain`. `domain/`
 - Any learner-visible change to an approved scenario bumps `version` and returns it to `draft`.
 
 ## Review guidelines
-Reviewers (CodeRabbit and humans) should flag, as high severity:
+Reviewers (the Claude review agent, CodeQL and humans) should flag, as high severity:
 - Anything that logs or stores rationale text, or returns answer-key fields before a submission.
 - Any tool, command or code path that lets an agent approve content or edit review fields.
 - Any AWS resource or setting on the cost list above.
