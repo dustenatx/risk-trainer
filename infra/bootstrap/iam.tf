@@ -15,8 +15,12 @@ locals {
   acct = var.account_id
   rgn  = var.region
 
-  plan_sub   = "repo:${var.github_repository}:ref:refs/heads/main"
-  deploy_sub = "repo:${var.github_repository}:environment:prod"
+  # GitHub's immutable OIDC subject: owner@owner_id/name@repo_id (README.md).
+  gh_owner   = split("/", var.github_repository)[0]
+  gh_name    = split("/", var.github_repository)[1]
+  gh_repo    = "${local.gh_owner}@${var.github_owner_id}/${local.gh_name}@${var.github_repository_id}"
+  plan_sub   = "repo:${local.gh_repo}:ref:refs/heads/main"
+  deploy_sub = "repo:${local.gh_repo}:environment:prod"
 
   arn_function   = "arn:aws:lambda:${local.rgn}:${local.acct}:function:risk-trainer-*"
   arn_table      = "arn:aws:dynamodb:${local.rgn}:${local.acct}:table/risk-trainer-*"

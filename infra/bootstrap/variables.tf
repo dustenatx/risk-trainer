@@ -18,6 +18,33 @@ variable "github_repository" {
   description = "GitHub repository (owner/name) whose workflows may assume the roles."
   type        = string
   default     = "dustenatx/risk-trainer"
+
+  validation {
+    condition     = can(regex("^[^/@:]+/[^/@:]+$", var.github_repository))
+    error_message = "github_repository must be owner/name."
+  }
+}
+
+variable "github_owner_id" {
+  description = "Numeric GitHub ID of the repository owner, used in the immutable OIDC subject."
+  type        = string
+  default     = "54679392"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_owner_id))
+    error_message = "github_owner_id must be numeric."
+  }
+}
+
+variable "github_repository_id" {
+  description = "Numeric GitHub ID of the repository, used in the immutable OIDC subject."
+  type        = string
+  default     = "1398551921"
+
+  validation {
+    condition     = can(regex("^[0-9]+$", var.github_repository_id))
+    error_message = "github_repository_id must be numeric."
+  }
 }
 
 variable "create_oidc_provider" {
