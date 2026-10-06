@@ -57,6 +57,10 @@ Every command takes `--content-dir` (default `content`).
 
 POST bodies over 32 KB get 413 before parsing, and every POST needs the session's CSRF token. The slot limit and accept fields use `static/app.js` (first party, no build step), and htmx 2.0.11 is vendored in `static/`.
 
+## Infrastructure
+
+Terraform lives in `infra/`. The owner applies `infra/bootstrap/` once (state bucket, GitHub OIDC roles); its runbook is [`infra/bootstrap/README.md`](infra/bootstrap/README.md). The app infrastructure and deploy workflow follow in group 5.3.
+
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request: `check` (ruff, mypy, pytest, rt validate), `gitleaks`, `semgrep`, `pip-audit`, `iac` (terraform fmt/validate and checkov once `infra/` has Terraform), and `e2e` (Playwright; not a required check yet). `claude-code-review.yml` runs the read-only Claude reviewer. CodeQL runs through GitHub's default setup.
+`.github/workflows/ci.yml` runs on every pull request: `check` (ruff, mypy, pytest, rt validate), `gitleaks`, `semgrep`, `pip-audit`, `iac` (terraform fmt, validate, `terraform test` with a mocked provider, and checkov), and `e2e` (Playwright; not a required check yet). `claude-code-review.yml` runs the read-only Claude reviewer. CodeQL runs through GitHub's default setup.
