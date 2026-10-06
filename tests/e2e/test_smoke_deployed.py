@@ -9,6 +9,8 @@ import os
 import pytest
 from playwright.sync_api import Page, expect
 
+from tests.e2e.flows import answer_all_transfer
+
 pytestmark = pytest.mark.smoke
 
 
@@ -41,9 +43,7 @@ def test_smoke_http_redirects_to_https(page: Page, deployed_url: str) -> None:
 def test_smoke_complete_a_scenario(page: Page, deployed_url: str) -> None:
     page.goto(f"{deployed_url}/")
     page.locator('a[href^="/s/"]').first.click()
-    # Transfer for every finding: valid in any scenario (no slots, no approver needed).
-    for radio in page.locator('input[type="radio"][value="transfer"]').all():
-        radio.check()
+    answer_all_transfer(page)
     page.get_by_role("button", name="Submit my answers").click()
     expect(page.locator("#score")).to_contain_text("points")
     expect(page.locator("section.finding-debrief").first).to_be_visible()
