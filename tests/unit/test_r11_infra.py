@@ -12,10 +12,13 @@ TF_FILES = sorted(p for p in INFRA.rglob("*.tf") if ".terraform" not in p.parts)
 
 
 def terraform_roots() -> list[Path]:
-    roots = {
-        p.parent for p in TF_FILES if hcl_blocks(p.read_text(encoding="utf-8"), r"terraform\s*\{")
-    }
+    """Directories Terraform is run from: they declare a backend (modules don't)."""
+    roots = {p.parent for p in TF_FILES if re.search(r'backend\s+"', p.read_text(encoding="utf-8"))}
     return sorted(roots)
+
+
+def test_r11_roots_are_bootstrap_and_prod() -> None:
+    assert terraform_roots() == [INFRA / "bootstrap", INFRA / "envs" / "prod"]
 
 
 def test_r11_infra_has_terraform() -> None:
