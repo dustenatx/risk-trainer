@@ -31,12 +31,12 @@ def test_security_headers_on_every_response() -> None:
 @pytest.mark.parametrize("template", TEMPLATES, ids=lambda p: p.name)
 def test_templates_have_no_inline_script_handlers_or_styles(template: Path) -> None:
     text = template.read_text(encoding="utf-8")
-    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", text)
+    assert not re.search(r"<script(?![^>]*\bsrc=)[^>]*>", text, re.IGNORECASE)
     assert not re.search(r"\son[a-z]+\s*=", text, re.IGNORECASE)
     assert not re.search(r"\sstyle\s*=", text, re.IGNORECASE)
     assert not re.search(r"<style", text, re.IGNORECASE)
     assert "|safe" not in text.replace(" ", "")
-    for src in re.findall(r'src="([^"]+)"', text):
+    for src in re.findall(r'src="([^"]+)"', text, re.IGNORECASE):
         assert src.startswith("/static/")
 
 
