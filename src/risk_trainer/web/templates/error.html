@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} | Risk Trainer{% endblock %}
+{% block content %}
+<h1>{{ title }}</h1>
+{% if status == 403 %}
+<p>Your session may have expired. Go back, reload the page and submit again.</p>
+{% elif status == 404 %}
+<p>That page doesn't exist. <a href="/">See the scenarios</a>.</p>
+{% elif status == 413 %}
+<p>Shorten your rationale or note and try again.</p>
+{% else %}
+<p>Please try again in a moment.</p>
+{% endif %}
+<p class="hint">Reference: <code id="request-id">{{ request_id }}</code></p>
+{% endblock %}

@@ -1,4 +1,4 @@
-.PHONY: check lint types test validate audit format
+.PHONY: check lint types test validate audit format e2e
 
 check: lint types test validate
 
@@ -14,6 +14,9 @@ test:
 
 validate:
 	uv run rt validate
+
+e2e:
+	uv run pytest -m e2e tests/e2e
 
 audit:
 	uv export --locked --no-emit-project --format requirements-txt --quiet -o .audit-requirements.txt

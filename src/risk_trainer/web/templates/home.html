@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<section id="intro" class="intro">
+  <h1>You can't fix everything. Decide what to do with each risk.</h1>
+  <p>Each scenario puts you in a security team with five findings and only enough people to fix a couple of them. For every finding, pick a risk response: avoid it, mitigate it (fix it or add a compensating control), transfer it, or accept it. If you accept a risk, choose who should sign off.</p>
+  <p>Submit and you'll get a score, the reasoning behind the expert answer, and how other learners answered. Most scenarios take under ten minutes.</p>
+  <p><a href="/responses">New to the four responses? Read the reference first.</a></p>
+</section>
+
+<section aria-labelledby="scenarios-heading">
+  <h2 id="scenarios-heading">Scenarios</h2>
+  {% if scenarios %}
+  <ul class="scenario-list">
+    {% for scenario in scenarios %}
+    <li class="scenario-card">
+      <h3><a href="/s/{{ scenario.id }}">{{ scenario.title }}</a></h3>
+      {% if scenario.status.value == "draft" %}<p class="tag tag-draft">DRAFT</p>{% endif %}
+      <dl class="meta">
+        <div><dt>Difficulty</dt><dd>{{ scenario.difficulty.value | capitalize }}</dd></div>
+        <div><dt>Time</dt><dd>About {{ scenario.estimated_minutes }} minutes</dd></div>
+        <div><dt>CISSP domains</dt><dd>{% for d in scenario.cissp_domains %}<span class="tag">Domain {{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</dd></div>
+      </dl>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p>No scenarios are published yet.</p>
+  {% endif %}
+</section>
+{% endblock %}

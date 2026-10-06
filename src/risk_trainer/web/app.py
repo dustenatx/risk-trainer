@@ -1,0 +1,127 @@
+"""FastAPI app factory (PRD R5-R10)."""
+
+from pathlib import Path
+
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.types import Scope
+
+from risk_trainer.config import Settings, check_storage
+from risk_trainer.content.repository import load_publishable
+from risk_trainer.domain.models import Exposure, Scenario
+from risk_trainer.domain.treatments import APPROVER_LABELS, TREATMENT_LABELS, Approver, Treatment
+from risk_trainer.storage.attempts import AttemptStore
+from risk_trainer.web.logging import configure_logging
+from risk_trainer.web.middleware import (
+    BodyLimitMiddleware,
+    RequestContextMiddleware,
+    SecurityHeadersMiddleware,
+)
+from risk_trainer.web.routes import exercise, pages
+
+WEB_DIR = Path(__file__).resolve().parent
+SESSION_COOKIE = "rt_session"
+
+EXPOSURE_LABELS = {
+    Exposure.INTERNET_FACING: "Internet-facing",
+    Exposure.INTERNAL: "Internal network",
+    Exposure.SEGMENTED: "Segmented network",
+    Exposure.THIRD_PARTY: "Third party",
+    Exposure.PROCESS: "Business process",
+}
+ERROR_TITLES = {
+    403: "This form has expired",
+    404: "Page not found",
+    405: "Not allowed",
+    413: "That submission is too large",
+    422: "Something in the form needs fixing",
+    500: "Something went wrong",
+}
+
+
+def make_templates() -> Jinja2Templates:
+    templates = Jinja2Templates(directory=WEB_DIR / "templates")
+    templates.env.globals.update(
+        treatment_labels=TREATMENT_LABELS,
+        approver_labels=APPROVER_LABELS,
+        exposure_labels=EXPOSURE_LABELS,
+        treatments=list(Treatment),
+        approvers=list(Approver),
+    )
+    return templates
+
+
+def build_store(settings: Settings) -> AttemptStore:
+    check_storage(settings)
+    if settings.storage_backend == "memory":
+        from risk_trainer.storage.memory import MemoryAttemptStore
+
+        return MemoryAttemptStore()
+    from risk_trainer.storage.dynamodb import DynamoAttemptStore, make_client
+
+    table = settings.dynamodb_table or ""
+    return DynamoAttemptStore(make_client(settings.aws_region), table)
+
+
+def create_app(
+    settings: Settings,
+    store: AttemptStore | None = None,
+    scenarios: list[Scenario] | None = None,
+    *,
+    preview: bool = False,
+) -> FastAPI:
+    """Build the app. Refuses unsafe storage settings (memory storage inside Lambda)."""
+    check_storage(settings)
+    configure_logging(settings.log_level)
+    templates = make_templates()
+    app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+    app.state.settings = settings
+    app.state.templates = templates
+    app.state.preview = preview
+    app.state.store = store if store is not None else build_store(settings)
+    loaded = scenarios if scenarios is not None else load_publishable(settings.content_dir)
+    app.state.scenarios = {scenario.id: scenario for scenario in loaded}
+
+    async def render_error(scope: Scope, status: int, request_id: str) -> tuple[bytes, str]:
+        request = Request(scope)
+        response = error_response(request, status, request_id)
+        return bytes(response.body), "text/html; charset=utf-8"
+
+    def error_response(request: Request, status: int, request_id: str | None = None) -> Response:
+        return templates.TemplateResponse(
+            request,
+            "error.html",
+            {
+                "status": status,
+                "title": ERROR_TITLES.get(status, "Something went wrong"),
+                "request_id": request_id or getattr(request.state, "request_id", ""),
+                "preview": preview,
+            },
+            status_code=status,
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_error(request: Request, exc: StarletteHTTPException) -> Response:
+        return error_response(request, exc.status_code)
+
+    app.include_router(pages.router)
+    app.include_router(exercise.router)
+    app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+
+    # Added innermost first: the last one added runs first.
+    app.add_middleware(
+        SessionMiddleware,
+        secret_key=settings.session_secret.get_secret_value(),
+        session_cookie=SESSION_COOKIE,
+        max_age=None,
+        same_site="lax",
+        https_only=settings.session_cookie_secure,
+    )
+    app.add_middleware(BodyLimitMiddleware, render_error=render_error)
+    app.add_middleware(RequestContextMiddleware, render_error=render_error)
+    app.add_middleware(SecurityHeadersMiddleware)
+    return app

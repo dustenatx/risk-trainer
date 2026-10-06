@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="htmx-config" content='{"includeIndicatorStyles":false,"allowEval":false,"allowScriptTags":false,"historyCacheSize":0,"responseHandling":[{"code":"204","swap":false},{"code":"[23]..","swap":true},{"code":"422","swap":true},{"code":"[45]..","swap":false,"error":true},{"code":"...","swap":false}]}'>
+  <title>{% block title %}Risk Trainer{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css">
+  <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/app.js" defer></script>
+</head>
+<body hx-boost="true">
+  <a class="skip-link" href="#main">Skip to content</a>
+  {% if preview %}
+  <div class="banner banner-preview" role="note">Local preview. Not the live site.</div>
+  {% endif %}
+  {% if draft %}
+  <div class="banner banner-draft" role="note"><strong>DRAFT</strong>: this scenario is not approved. Only you can see it, in the local preview.</div>
+  {% endif %}
+  <header class="site-header">
+    <a class="site-name" href="/">Risk Trainer</a>
+    <nav aria-label="Main">
+      <ul>
+        <li><a href="/responses">The four responses</a></li>
+        <li><a href="/about">About</a></li>
+        <li><a href="/privacy">Privacy</a></li>
+      </ul>
+    </nav>
+  </header>
+  <main id="main" tabindex="-1">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <p>Scenarios and organizations are fictional. Not affiliated with or endorsed by ISC2.</p>
+  </footer>
+</body>
+</html>

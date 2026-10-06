@@ -4,8 +4,8 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.4 — 5 Oct 2026 (group 5.1 plan: stricter content rules, file/folder rules, retire semantics, Python 3.14) |
-| Status | Owner-reviewed and spec-reviewed; ready for group 5.1 |
+| Version | 1.5 — 6 Oct 2026 (group 5.2 plan: `rt preview`, submission rules, `why_not` in the debrief, storage settings) |
+| Status | Owner-reviewed and spec-reviewed; group 5.1 built; group 5.2 in progress |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
@@ -133,6 +133,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 **R5 — Home and scenario list.**
 - The home page SHALL explain the exercise in no more than 120 words and link to a reference page describing the four treatments.
 - The scenario list SHALL show each approved scenario's title, difficulty, estimated minutes and CISSP domain tags.
+- WHEN the author runs `rt preview`, THEN the CLI SHALL serve the app on 127.0.0.1 only (there is no option to change the host, and any non-loopback address SHALL be refused), with approved scenarios and valid drafts, in-memory storage, and a DRAFT banner on every draft scenario's pages. The deployed app SHALL never show drafts.
 
 **R6 — Exercise page.**
 - WHEN a learner opens a scenario, THEN the system SHALL show the organizational context, the remediation capacity and all five findings with their signals.
@@ -146,19 +147,27 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - WHEN a learner submits, THEN the server SHALL re-validate every constraint in R6 and reject violations with HTTP 422 and a message the learner can understand.
 - The server SHALL accept a submission only if it has exactly one answer for each of the scenario's finding IDs, with no duplicate or unknown IDs.
 - The server SHALL reject request bodies larger than 32 KB with HTTP 413 before parsing them.
+- Every POST SHALL carry the session's CSRF token; a missing or wrong token SHALL get HTTP 403.
+- An approver sent for a treatment other than `accept` SHALL be ignored and not recorded. Rationale and note lengths SHALL be counted after trimming whitespace.
 - The system SHALL score each finding deterministically per Section 7 and show the total as points and as a percentage.
 - The score SHALL NOT depend on the rationale text or on any AI output.
 
 **R8 — Debrief.**
 - WHEN scoring completes, THEN the system SHALL show a per-finding table (learner's choice, expert choice, points), the expert rationale, key considerations, common traps, and the scenario's job tip and/or exam tip from the answer key.
-- WHERE a learner chose `accept` with an approver that is not correct, the debrief SHALL state who should approve and why.
+- WHERE a learner chose `accept` with an approver that is not correct, the debrief SHALL state who should approve and why. The "why" SHALL be fixed text per approver role, phrased as what is typical under the organization's governance rather than as an absolute rule, with a separate message when `senior_management` is acceptable but not correct.
+- WHERE the answer key has a `why_not` entry for the learner's treatment on a finding (and that treatment is not preferred), the debrief SHALL show it for that finding.
+- The debrief SHALL show the learner's own rationale and overall note in that response only. They SHALL NOT be stored or logged.
+- Responses to a submission (POST) SHALL send `Cache-Control: no-store`.
 
 **R9 — Peer distribution.**
 - WHEN a submission is scored, THEN the system SHALL record the structured choices (scenario ID and version, per-finding treatment and approver, score, timestamp). It SHALL NOT record rationale text, overall notes, IP address or user agent.
 - WHILE a scenario version has at least `PEER_MIN_SAMPLE` (default 10) recorded attempts, the debrief SHALL show the percentage of learners choosing each treatment for each finding.
 - Raw attempt records SHALL carry a DynamoDB TTL of the submission time plus 180 days, and every read SHALL exclude records past that time (DynamoDB deletes expired items later, on its own schedule). Aggregate counters SHALL persist.
+- The learner's own attempt SHALL be recorded before the debrief renders and SHALL count toward `PEER_MIN_SAMPLE`. A resubmitted form (same submission ID) SHALL NOT be counted twice.
+- IF storage fails, THEN the learner SHALL still get the score and debrief, without peer results.
+- `STORAGE_BACKEND` (`memory` or `dynamodb`) SHALL have no default outside `rt preview`, and the app SHALL refuse to start with `memory` inside Lambda (`AWS_LAMBDA_FUNCTION_NAME` set).
 
-**R10 — Static pages.** The system SHALL include About, Privacy and "The four responses" reference pages. About SHALL state that scenarios are AI-drafted, fact-checked and human-approved; that any coaching through the MCP connector is generated by the learner's own AI assistant; and that the site is not affiliated with or endorsed by ISC2.
+**R10 — Static pages.** The system SHALL include About, Privacy and "The four responses" reference pages. About SHALL state that scenarios are AI-drafted, fact-checked and human-approved; that any coaching through the MCP connector is generated by the learner's own AI assistant; and that the site is not affiliated with or endorsed by ISC2. Privacy SHALL state that the site sets one session cookie, used only to protect form submissions, with no tracking.
 
 ### 5.3 Group: `aws-deployment`
 

@@ -143,6 +143,20 @@ def load_publishable(content_dir: Path) -> list[Scenario]:
     ]
 
 
+def load_previewable(content_dir: Path) -> tuple[list[Scenario], list[FileReport]]:
+    """Approved scenarios plus valid drafts, for `rt preview` only. Also returns failed reports."""
+    reports = validate_tree(content_dir)
+    failed = [r for r in reports if r.errors]
+    scenarios = [
+        r.scenario
+        for r in reports
+        if r.scenario is not None
+        and not r.errors
+        and r.scenario.status in (Status.APPROVED, Status.DRAFT)
+    ]
+    return scenarios, failed
+
+
 def _yaml_message(exc: yaml.YAMLError) -> str:
     mark = getattr(exc, "problem_mark", None)
     problem = getattr(exc, "problem", None) or "could not parse YAML"

@@ -22,5 +22,13 @@ class ScenarioInvalid(RiskTrainerError):
         super().__init__(f"scenario is invalid ({len(self.errors)} error(s))")
 
 
+class SubmissionInvalid(RiskTrainerError):
+    """A learner submission that breaks the exercise rules (R6, R7)."""
+
+    def __init__(self, errors: Sequence[ContentError]) -> None:
+        self.errors = list(errors)
+        super().__init__(f"submission is invalid ({len(self.errors)} error(s))")
+
+
 class LifecycleError(RiskTrainerError):
     """An approve or retire request that can't be carried out."""
