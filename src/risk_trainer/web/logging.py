@@ -36,3 +36,11 @@ def configure_logging(level: str) -> None:
     root.handlers[:] = [handler]
     root.setLevel(level)
     root.propagate = False
+
+    # EMF metric lines (web/metrics.py) must be the bare JSON document, one per log event.
+    metrics_handler = logging.StreamHandler()
+    metrics_handler.setFormatter(logging.Formatter("%(message)s"))
+    metrics = logging.getLogger("risk_trainer.metrics")
+    metrics.handlers[:] = [metrics_handler]
+    metrics.setLevel(logging.INFO)
+    metrics.propagate = False

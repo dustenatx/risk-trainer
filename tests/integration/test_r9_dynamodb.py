@@ -1,42 +1,17 @@
 """R9 — attempt storage against DynamoDB (moto), plus the same contract for the memory store."""
 
-from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Any
 
-import boto3
 import pytest
-from moto import mock_aws
 
 from risk_trainer.domain.treatments import Approver, Treatment
 from risk_trainer.storage.attempts import AttemptRecord, AttemptStore, Choice, StorageError
 from risk_trainer.storage.dynamodb import CLIENT_CONFIG, DynamoAttemptStore, make_client
 from risk_trainer.storage.memory import MemoryAttemptStore
+from tests.integration.conftest import REGION, TABLE
 
-TABLE = "risk-trainer-test"
-REGION = "us-east-1"
 SUBMITTED = datetime(2026, 10, 6, 12, 0, tzinfo=UTC)
-
-
-@pytest.fixture
-def dynamo(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
-    for key in ("AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY"):
-        monkeypatch.setenv(key, "testing")
-    with mock_aws():
-        client = boto3.client("dynamodb", region_name=REGION)
-        client.create_table(
-            TableName=TABLE,
-            KeySchema=[
-                {"AttributeName": "pk", "KeyType": "HASH"},
-                {"AttributeName": "sk", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "pk", "AttributeType": "S"},
-                {"AttributeName": "sk", "AttributeType": "S"},
-            ],
-            ProvisionedThroughput={"ReadCapacityUnits": 1, "WriteCapacityUnits": 1},
-        )
-        yield client
 
 
 @pytest.fixture(params=["memory", "dynamodb"])

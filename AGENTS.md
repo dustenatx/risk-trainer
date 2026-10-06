@@ -45,7 +45,7 @@ src/risk_trainer/
   storage/              DynamoDB repositories: attempts, aggregates, rate limits
   web/                  FastAPI app, routers, templates/, static/
   mcp/                  authoring.py (stdio), learner.py (HTTP at /mcp)
-  cli/                  Typer app: rt validate | approve | retire | preview | mcp
+  cli/                  Typer app: rt validate | approve | retire | preview | package | mcp
   config.py             pydantic-settings; the only place env vars are read
 tests/unit  tests/integration (moto)  tests/e2e (Playwright)
 infra/bootstrap/ (owner applies once)  infra/modules/  infra/envs/prod/ (dev/ added when needed)

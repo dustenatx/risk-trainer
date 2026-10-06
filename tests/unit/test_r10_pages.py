@@ -23,8 +23,8 @@ def test_r10_about_states_no_isc2_affiliation() -> None:
 
 def test_r10_privacy_states_single_session_cookie() -> None:
     assert (
-        "The site sets one session cookie. It's used only to protect form submissions, "
-        "with no tracking."
+        "The site sets one session cookie. It's used only to protect form submissions "
+        "and limit how often they're sent, with no tracking."
     ) in get("/privacy")
 
 
@@ -33,6 +33,7 @@ def test_r10_privacy_lists_each_data_item_with_retention() -> None:
     for row_id, retention in [
         ("privacy-attempts", "180 days"),
         ("privacy-aggregates", "Kept"),
+        ("privacy-rate-limit", "2 minutes"),
         ("privacy-free-text", "Never stored or logged"),
         ("privacy-logs", "14 days"),
         ("privacy-cdn", "Standard logging is turned off"),

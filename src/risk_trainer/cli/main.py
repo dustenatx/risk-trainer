@@ -1,4 +1,4 @@
-"""The `rt` command line (PRD R2, R3, R5)."""
+"""The `rt` command line (PRD R2, R3, R5, R14)."""
 
 import ipaddress
 import secrets
@@ -10,6 +10,7 @@ import typer
 
 from risk_trainer.content.lifecycle import approve as approve_scenario
 from risk_trainer.content.lifecycle import retire as retire_scenario
+from risk_trainer.content.packaging import PackagingError, build_zip
 from risk_trainer.content.repository import load_previewable, validate_tree
 from risk_trainer.domain.errors import LifecycleError, ScenarioInvalid
 from risk_trainer.domain.models import Scenario
@@ -63,6 +64,34 @@ def retire(
     except (LifecycleError, ScenarioInvalid) as exc:
         _fail(scenario_id, exc)
     typer.echo(f"Retired {scenario_id}: {path}")
+
+
+@app.command()
+def package(
+    out: Annotated[Path, typer.Option("--out", help="Zip file to write, e.g. dist/lambda.zip.")],
+    site_packages: Annotated[
+        Path | None,
+        typer.Option("--site-packages", help="Installed dependencies to include at the zip root."),
+    ] = None,
+    content_dir: ContentDir = Path("content"),
+) -> None:
+    """Build the Lambda zip with approved scenarios only. Fails if any approved file is invalid."""
+    if site_packages is not None and not site_packages.is_dir():
+        typer.echo(f"{site_packages}: not a directory")
+        raise typer.Exit(code=1)
+    try:
+        names = build_zip(content_dir, out, site_packages)
+    except ScenarioInvalid as exc:
+        typer.echo("Refused: an approved scenario is invalid; no package was written.")
+        for error in exc.errors:
+            typer.echo(f"  {error.path}: {error.message}")
+        raise typer.Exit(code=1) from None
+    except PackagingError as exc:
+        typer.echo(f"Refused: {exc}")
+        raise typer.Exit(code=1) from None
+    for name in names:
+        typer.echo(f"Packaged {name}")
+    typer.echo(f"Wrote {out} with {len(names)} approved scenario(s).")
 
 
 PREVIEW_HOST = "127.0.0.1"

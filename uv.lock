@@ -141,6 +141,9 @@ wheels = [
 dynamodb = [
     { name = "mypy-boto3-dynamodb" },
 ]
+ssm = [
+    { name = "mypy-boto3-ssm" },
+]
 
 [[package]]
 name = "botocore"
@@ -774,6 +777,18 @@ wheels = [
 ]
 
 [[package]]
+name = "mangum"
+version = "0.22.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/82/c8/1579c705908d02a4526a748e8d0f0419151d4498c59033840f5df3a14822/mangum-0.22.0.tar.gz", hash = "sha256:701936891aaed8ed66479b871c2bda87ba288fd01c7d5dd6ba6c8e9ba1c239d1", size = 118290, upload-time = "2026-08-22T12:54:48.396Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ca/a2/21ee5d457ae79a2587ff0d4652990670b7cac84ba0eaab6e6865a3bd2515/mangum-0.22.0-py3-none-any.whl", hash = "sha256:a0595e3cc7a8091b22d8b3997bab5b2ad6aae7a5e40865e19c2015f5c959a93b", size = 17143, upload-time = "2026-08-22T12:54:46.924Z" },
+]
+
+[[package]]
 name = "markdown-it-py"
 version = "4.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -895,6 +910,9 @@ dynamodb = [
     { name = "docker" },
     { name = "py-partiql-parser" },
 ]
+ssm = [
+    { name = "pyyaml" },
+]
 
 [[package]]
 name = "msgpack"
@@ -999,6 +1017,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d5/3b/debe960b7687129df6584a0aaf3bc917c2e58546444087fee4fecc4bddb0/mypy_boto3_dynamodb-1.43.106.tar.gz", hash = "sha256:b51472f27ab55c83d983269cff2e618dee923851c433b7c933d21a0f8b0e18be", size = 50402, upload-time = "2026-09-30T22:44:34.15Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/50/fa/ec97f68da6997cc734d6ad991a9f6fc6413fa31293b5d3e89692b32864b3/mypy_boto3_dynamodb-1.43.106-py3-none-any.whl", hash = "sha256:46aeaa7261e74786908d0ee32089be997007127cb40f81d16ec80c21c37a52a3", size = 60590, upload-time = "2026-09-30T22:44:32.61Z" },
+]
+
+[[package]]
+name = "mypy-boto3-ssm"
+version = "1.43.104"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/b4/007e9acec1ccc7b0f9148f3ef2f6fe27ef183c5c7ab08b6b5a7d465d13d5/mypy_boto3_ssm-1.43.104.tar.gz", hash = "sha256:1b1e18762e6b9ceaf735e8165a6dbd789b10d94f56f704ef010d0c8bbef059cc", size = 98088, upload-time = "2026-09-28T20:24:22.046Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8e/9a/c7d22d1b1450c6b790cad4fcb2e98defd383527d381b4084cd7ee6b2deaa/mypy_boto3_ssm-1.43.104-py3-none-any.whl", hash = "sha256:4434c02de5101a0bc2fbd9bdedbcc98f5836dc432fce38ebfc8c88adb63dbb90", size = 99719, upload-time = "2026-09-28T20:24:19.363Z" },
 ]
 
 [[package]]
@@ -1461,6 +1488,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "itsdangerous" },
     { name = "jinja2" },
+    { name = "mangum" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "python-multipart" },
@@ -1470,9 +1498,9 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "boto3-stubs", extra = ["dynamodb"] },
+    { name = "boto3-stubs", extra = ["dynamodb", "ssm"] },
     { name = "httpx" },
-    { name = "moto", extra = ["dynamodb"] },
+    { name = "moto", extra = ["dynamodb", "ssm"] },
     { name = "mypy" },
     { name = "pip-audit" },
     { name = "pytest" },
@@ -1489,6 +1517,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.142.2" },
     { name = "itsdangerous", specifier = ">=2.2.0" },
     { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "mangum", specifier = ">=0.22.0" },
     { name = "pydantic", specifier = ">=2.12" },
     { name = "pydantic-settings", specifier = ">=2.15.0" },
     { name = "python-multipart", specifier = ">=0.0.32" },
@@ -1498,9 +1527,9 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "boto3-stubs", extras = ["dynamodb"], specifier = ">=1.43.108" },
+    { name = "boto3-stubs", extras = ["dynamodb", "ssm"], specifier = ">=1.43.108" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "moto", extras = ["dynamodb"], specifier = ">=5.2.3" },
+    { name = "moto", extras = ["dynamodb", "ssm"], specifier = ">=5.2.3" },
     { name = "mypy", specifier = ">=1.18" },
     { name = "pip-audit", specifier = ">=2.10" },
     { name = "pytest", specifier = ">=8.4" },

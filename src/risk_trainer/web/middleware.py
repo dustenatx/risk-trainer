@@ -1,6 +1,8 @@
-"""Pure ASGI middleware: security headers, request IDs with error pages, and the body limit."""
+"""Pure ASGI middleware: security headers, request IDs with error pages, the origin check and
+the body limit."""
 
 import logging
+import secrets
 import time
 import uuid
 from collections.abc import Awaitable, Callable
@@ -23,7 +25,10 @@ SECURITY_HEADERS = {
     "x-content-type-options": "nosniff",
     "referrer-policy": "strict-origin-when-cross-origin",
     "x-frame-options": "DENY",
+    # CloudFront's managed SecurityHeadersPolicy keeps origin values, so the app sets them (R12).
+    "strict-transport-security": "max-age=31536000",
 }
+ORIGIN_VERIFY_HEADER = b"x-origin-verify"
 ErrorRenderer = Callable[[Scope, int, str], Awaitable[tuple[bytes, str]]]
 
 
@@ -107,6 +112,42 @@ class RequestContextMiddleware:
                 },
             )
             request_id_var.reset(token)
+
+
+class OriginVerifyMiddleware:
+    """Rejects requests that didn't come through CloudFront (R12).
+
+    CloudFront adds a secret X-Origin-Verify header to every origin request. Requests to the
+    Lambda Function URL without it get a bare 403, before the session or body is read.
+    """
+
+    def __init__(self, app: ASGIApp, secret: str) -> None:
+        if not secret:
+            raise ValueError("the origin-verify secret is empty")
+        self.app = app
+        self._secret = secret.encode()
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        values = [value for name, value in scope["headers"] if name == ORIGIN_VERIFY_HEADER]
+        if len(values) == 1 and secrets.compare_digest(values[0], self._secret):
+            await self.app(scope, receive, send)
+            return
+        logger.warning("request without origin header", extra={"event": "origin_rejected"})
+        body = b"Forbidden"
+        await send(
+            {
+                "type": "http.response.start",
+                "status": 403,
+                "headers": [
+                    (b"content-type", b"text/plain; charset=utf-8"),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            }
+        )
+        await send({"type": "http.response.body", "body": body})
 
 
 class _BodyTooLarge(Exception):
