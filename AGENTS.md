@@ -48,7 +48,7 @@ src/risk_trainer/
   cli/                  Typer app: rt validate | approve | retire | preview | mcp
   config.py             pydantic-settings; the only place env vars are read
 tests/unit  tests/integration (moto)  tests/e2e (Playwright)
-infra/bootstrap/ (owner applies once)  infra/modules/  infra/envs/{dev,prod}/
+infra/bootstrap/ (owner applies once)  infra/modules/  infra/envs/prod/ (dev/ added when needed)
 .github/workflows/
 ```
 Dependencies point inward: `web` and `mcp` → `storage` → `domain`. `domain/` imports nothing from boto3, FastAPI or `mcp`; a test enforces this.

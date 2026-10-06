@@ -32,6 +32,8 @@ crash.log
 *.tfvars
 !example.tfvars
 *.tfplan
+# Local backend override for the first bootstrap apply (infra/bootstrap/README.md)
+*_override.tf
 
 # Playwright artifacts
 test-results/

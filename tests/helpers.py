@@ -2,6 +2,7 @@
 
 import copy
 import datetime
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -25,3 +26,17 @@ def approved(data: dict[str, Any], scenario_id: str | None = None) -> dict[str, 
     if scenario_id:
         data["id"] = scenario_id
     return data
+
+
+def hcl_blocks(text: str, header: str) -> list[str]:
+    """Bodies of HCL blocks (braces included) whose opening matches the `header` regex."""
+    found: list[str] = []
+    for match in re.finditer(header, text):
+        start = text.index("{", match.start())
+        depth = 0
+        for i in range(start, len(text)):
+            depth += {"{": 1, "}": -1}.get(text[i], 0)
+            if depth == 0:
+                found.append(text[start : i + 1])
+                break
+    return found

@@ -106,6 +106,8 @@ jobs:
           for dir in $(find infra -name '*.tf' -not -path '*/.terraform/*' -exec dirname {} \; | sort -u); do
             terraform -chdir="$dir" init -backend=false -input=false
             terraform -chdir="$dir" validate
+            # Mocked-provider tests (R11-R15); they make no AWS calls.
+            if [ -d "$dir/tests" ]; then terraform -chdir="$dir" test; fi
           done
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
         if: hashFiles('infra/**/*.tf') != ''
