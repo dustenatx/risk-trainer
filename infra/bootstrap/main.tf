@@ -12,6 +12,11 @@ locals {
 # --- Terraform state (R11): S3 with native lock files, no DynamoDB lock table ---
 
 resource "aws_s3_bucket" "state" {
+  # Owner-approved skips (docs/decisions.md, 2026-10-06):
+  #checkov:skip=CKV_AWS_145:A customer-managed KMS key costs money (AGENTS.md cost rules); SSE-S3 suffices for state.
+  #checkov:skip=CKV_AWS_144:Cross-region replication adds cost; versioning plus prevent_destroy cover recovery.
+  #checkov:skip=CKV_AWS_18:Access logging needs a paid log bucket; CloudTrail event history covers bucket changes.
+  #checkov:skip=CKV2_AWS_62:No consumers for bucket event notifications.
   bucket = local.state_bucket
 
   lifecycle {

@@ -168,7 +168,8 @@ resource "aws_iam_policy" "deploy" {
       {
         Sid    = "LambdaWrite"
         Effect = "Allow"
-        Action = [
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): CreateFunction + PassRole is how Terraform deploys the app; AddPermission is the Function URL's public invoke permission. Scoped to function:risk-trainer-*; PassRole is limited below.
+        Action = [ # nosemgrep: terraform.lang.security.iam.no-iam-priv-esc-roles.no-iam-priv-esc-roles, terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
           "lambda:CreateFunction", "lambda:DeleteFunction",
           "lambda:UpdateFunctionCode", "lambda:UpdateFunctionConfiguration",
           "lambda:PutFunctionConcurrency", "lambda:DeleteFunctionConcurrency",
@@ -180,9 +181,10 @@ resource "aws_iam_policy" "deploy" {
       },
       {
         # The app role may only be created or given inline policies with the boundary attached.
-        Sid      = "AppRoleWithBoundary"
-        Effect   = "Allow"
-        Action   = ["iam:CreateRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy"]
+        Sid    = "AppRoleWithBoundary"
+        Effect = "Allow"
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): Role creation and inline policies are allowed only with iam:PermissionsBoundary = risk-trainer-app-boundary, on role/risk-trainer-app-*.
+        Action   = ["iam:CreateRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy"] # nosemgrep: terraform.lang.security.iam.no-iam-priv-esc-funcs.no-iam-priv-esc-funcs, terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
         Resource = local.arn_app_role
         Condition = {
           StringEquals = { "iam:PermissionsBoundary" = aws_iam_policy.app_boundary.arn }
@@ -190,15 +192,17 @@ resource "aws_iam_policy" "deploy" {
       },
       {
         # No UpdateAssumeRolePolicy: a trust change needs a new role, created with the boundary.
-        Sid      = "AppRoleManage"
-        Effect   = "Allow"
-        Action   = ["iam:DeleteRole", "iam:TagRole", "iam:UntagRole", "iam:UpdateRoleDescription"]
+        Sid    = "AppRoleManage"
+        Effect = "Allow"
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): Lifecycle and tags for role/risk-trainer-app-* only; trust-policy changes and boundary removal are denied in guardrails.
+        Action   = ["iam:DeleteRole", "iam:TagRole", "iam:UntagRole", "iam:UpdateRoleDescription"] # nosemgrep: terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
         Resource = local.arn_app_role
       },
       {
-        Sid       = "PassAppRoleToLambda"
-        Effect    = "Allow"
-        Action    = "iam:PassRole"
+        Sid    = "PassAppRoleToLambda"
+        Effect = "Allow"
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): PassRole only for role/risk-trainer-app-* and only to lambda.amazonaws.com.
+        Action    = "iam:PassRole" # nosemgrep: terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
         Resource  = local.arn_app_role
         Condition = { StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" } }
       },
@@ -239,7 +243,8 @@ resource "aws_iam_policy" "deploy" {
       {
         Sid    = "WebAclWrite"
         Effect = "Allow"
-        Action = [
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): Manages the risk-trainer-* CloudFront web ACL; the WAF rules are reviewed in the app module.
+        Action = [ # nosemgrep: terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
           "wafv2:CreateWebACL", "wafv2:UpdateWebACL", "wafv2:DeleteWebACL",
           "wafv2:TagResource", "wafv2:UntagResource",
         ]
@@ -248,7 +253,8 @@ resource "aws_iam_policy" "deploy" {
       {
         Sid    = "AlertsWrite"
         Effect = "Allow"
-        Action = [
+        # Owner-approved Semgrep skip (docs/decisions.md, 2026-10-06): SetTopicAttributes is needed to manage the risk-trainer-* alert topic; the topic policy is reviewed in the app module.
+        Action = [ # nosemgrep: terraform.lang.security.iam.no-iam-resource-exposure.no-iam-resource-exposure
           "sns:CreateTopic", "sns:DeleteTopic", "sns:SetTopicAttributes",
           "sns:Subscribe", "sns:Unsubscribe", "sns:SetSubscriptionAttributes",
           "sns:TagResource", "sns:UntagResource",
@@ -284,6 +290,16 @@ resource "aws_iam_policy" "guardrails" {
         Effect   = "Deny"
         Action   = ["iam:DeleteRolePermissionsBoundary", "iam:PutRolePermissionsBoundary", "iam:AttachRolePolicy", "iam:UpdateAssumeRolePolicy"]
         Resource = "*"
+      },
+      {
+        # Stated explicitly for review; NoBootstrapChanges below also covers it with iam:*.
+        Sid    = "NoBoundaryPolicyEdits"
+        Effect = "Deny"
+        Action = [
+          "iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion",
+          "iam:DeletePolicyVersion", "iam:DeletePolicy",
+        ]
+        Resource = "arn:aws:iam::${local.acct}:policy/risk-trainer-app-boundary"
       },
       {
         Sid    = "NoBootstrapChanges"
@@ -383,9 +399,11 @@ resource "aws_iam_policy" "app_boundary" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid      = "AppTable"
-        Effect   = "Allow"
-        Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem", "dynamodb:ConditionCheckItem"]
+        Sid    = "AppTable"
+        Effect = "Allow"
+        # GetItem: peer counts. PutItem + UpdateItem: the attempt transaction and the
+        # per-session rate limit counter. Nothing else (no Scan, Query or DeleteItem).
+        Action   = ["dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]
         Resource = local.arn_table
       },
       {

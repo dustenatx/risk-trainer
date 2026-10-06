@@ -159,3 +159,103 @@ run "r14_managed_policies_fit_iam_limit" {
     error_message = "A managed policy is over the 6,144-character IAM limit; split it."
   }
 }
+
+run "r14_iam_escalation_guardrails" {
+  command = apply
+
+  # 1. Role creation and inline policies only with the boundary; AttachRolePolicy is never
+  #    allowed and is explicitly denied.
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_policy.deploy.policy).Statement :
+      s.Effect == "Allow"
+      && toset(s.Action) == toset(["iam:CreateRole", "iam:PutRolePolicy", "iam:DeleteRolePolicy"])
+      && s.Resource == "arn:aws:iam::111122223333:role/risk-trainer-app-*"
+      && s.Condition == { StringEquals = { "iam:PermissionsBoundary" = aws_iam_policy.app_boundary.arn } }
+    ])
+    error_message = "CreateRole and PutRolePolicy must require iam:PermissionsBoundary = the boundary ARN."
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for policy in [aws_iam_policy.read.policy, aws_iam_policy.deploy.policy] : [
+        for s in jsondecode(policy).Statement : [
+          for a in flatten([s.Action]) :
+          s.Condition == { StringEquals = { "iam:PermissionsBoundary" = aws_iam_policy.app_boundary.arn } }
+          if contains(["iam:CreateRole", "iam:PutRolePolicy"], a)
+        ] if s.Effect == "Allow"
+      ]
+    ]))
+    error_message = "No statement may allow CreateRole or PutRolePolicy without the boundary condition."
+  }
+
+  assert {
+    condition = alltrue(flatten([
+      for policy in [aws_iam_policy.read.policy, aws_iam_policy.deploy.policy] : [
+        for s in jsondecode(policy).Statement :
+        !contains(flatten([s.Action]), "iam:AttachRolePolicy") if s.Effect == "Allow"
+      ]
+    ]))
+    error_message = "iam:AttachRolePolicy must never be allowed."
+  }
+
+  # 2. PassRole only for the app role, only to Lambda.
+  assert {
+    condition = alltrue([
+      for s in jsondecode(aws_iam_policy.deploy.policy).Statement :
+      s.Resource == "arn:aws:iam::111122223333:role/risk-trainer-app-*"
+      && s.Condition == { StringEquals = { "iam:PassedToService" = "lambda.amazonaws.com" } }
+      if contains(flatten([s.Action]), "iam:PassRole")
+    ])
+    error_message = "iam:PassRole must be limited to the app role and iam:PassedToService = lambda.amazonaws.com."
+  }
+
+  # 3. Denies: boundary removal or replacement, and edits to the boundary policy itself.
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_policy.guardrails.policy).Statement :
+      s.Effect == "Deny" && s.Resource == "*"
+      && length(setsubtract(["iam:DeleteRolePermissionsBoundary", "iam:PutRolePermissionsBoundary", "iam:AttachRolePolicy"], flatten([s.Action]))) == 0
+    ])
+    error_message = "Guardrails must deny Delete/PutRolePermissionsBoundary and AttachRolePolicy on every resource."
+  }
+
+  assert {
+    condition = anytrue([
+      for s in jsondecode(aws_iam_policy.guardrails.policy).Statement :
+      s.Effect == "Deny"
+      && s.Resource == aws_iam_policy.app_boundary.arn
+      && length(setsubtract(["iam:CreatePolicyVersion", "iam:SetDefaultPolicyVersion"], flatten([s.Action]))) == 0
+    ])
+    error_message = "Guardrails must deny CreatePolicyVersion and SetDefaultPolicyVersion on the boundary policy."
+  }
+
+  # 4. The boundary grants exactly the app's needs and no IAM.
+  assert {
+    condition = alltrue(flatten([
+      for s in jsondecode(aws_iam_policy.app_boundary.policy).Statement : [
+        for a in flatten([s.Action]) : !startswith(a, "iam:")
+      ]
+    ]))
+    error_message = "The boundary must not grant any iam: action."
+  }
+
+  assert {
+    condition = toset(flatten([
+      for s in jsondecode(aws_iam_policy.app_boundary.policy).Statement : flatten([s.Action])
+      ])) == toset([
+      "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem",
+      "ssm:GetParameter", "kms:Decrypt",
+      "logs:CreateLogStream", "logs:PutLogEvents",
+    ])
+    error_message = "The boundary must grant exactly the app's actions."
+  }
+
+  assert {
+    condition = alltrue([
+      for s in jsondecode(aws_iam_policy.app_boundary.policy).Statement :
+      s.Effect == "Allow" && s.Resource != "*" && !strcontains(jsonencode(s.Action), "*")
+    ])
+    error_message = "Boundary statements must name resources and actions without wildcards."
+  }
+}
