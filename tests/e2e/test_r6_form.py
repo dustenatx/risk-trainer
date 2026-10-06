@@ -1,8 +1,11 @@
 """R6 — the exercise form in a real browser: keyboard only, 360 px, slot limit, accept fields."""
 
-import pytest
-from playwright.sync_api import Browser, Page, expect
+import time
 
+import pytest
+from playwright.sync_api import Browser, Page, Route, expect
+
+from tests.e2e.flows import answer_all_transfer
 from tests.web_helpers import RT001_ID
 
 pytestmark = pytest.mark.e2e
@@ -95,3 +98,19 @@ def test_r6_form_works_without_javascript(browser: Browser, base_url: str) -> No
     page.get_by_role("button", name="Submit my answers").click()
     expect(page.locator("#error-summary")).to_contain_text("capacity for 2")
     context.close()
+
+
+def test_r12_answers_survive_slow_scenario_load(page: Page, base_url: str) -> None:
+    """The smoke test's steps hold up when the scenario page is slow (a cold Lambda)."""
+
+    def slow_get(route: Route) -> None:
+        if route.request.method == "GET":
+            time.sleep(2)
+        route.continue_()
+
+    page.goto(f"{base_url}/")
+    page.route("**/s/*", slow_get)
+    page.locator('a[href^="/s/"]').first.click()
+    answer_all_transfer(page)
+    page.get_by_role("button", name="Submit my answers").click()
+    expect(page.locator("#score")).to_contain_text("points")
