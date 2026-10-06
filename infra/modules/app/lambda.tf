@@ -20,7 +20,10 @@ locals {
   parameter_arns = [data.aws_ssm_parameter.session_secret.arn, data.aws_ssm_parameter.origin_verify.arn]
 }
 
-resource "aws_cloudwatch_log_group" "app" {
+resource "aws_cloudwatch_log_group" "app" { # nosemgrep: terraform.aws.security.aws-cloudwatch-log-group-unencrypted.aws-cloudwatch-log-group-unencrypted
+  # Owner-approved skips (2026-10-06, docs/decisions.md):
+  #checkov:skip=CKV_AWS_158:A customer-managed KMS key costs money (AGENTS.md cost rules).
+  #checkov:skip=CKV_AWS_338:R13 and the AGENTS.md cost rules cap retention at 14 days.
   name              = local.log_group_name
   retention_in_days = var.log_retention_days
 }
@@ -77,7 +80,13 @@ resource "aws_iam_role_policy" "app" {
   })
 }
 
-resource "aws_lambda_function" "app" {
+resource "aws_lambda_function" "app" { # nosemgrep: terraform.aws.security.aws-lambda-x-ray-tracing-not-active.aws-lambda-x-ray-tracing-not-active
+  # Owner-approved skips (2026-10-06, docs/decisions.md):
+  #checkov:skip=CKV_AWS_50:Would require changing the bootstrap boundary; revisit after launch.
+  #checkov:skip=CKV_AWS_173:The environment holds no secrets (tested); a customer-managed KMS key costs money.
+  #checkov:skip=CKV_AWS_272:Code signing needs an S3 deploy bucket and signing jobs; the gated pipeline builds and deploys the package.
+  #checkov:skip=CKV_AWS_116:Invoked synchronously by the Function URL; a DLQ applies only to async invocations.
+  #checkov:skip=CKV_AWS_117:No private resources; a VPC needs NAT or endpoints (AGENTS.md cost rules).
   function_name                  = var.name
   description                    = "Risk Trainer web app (FastAPI via Mangum)"
   role                           = aws_iam_role.app.arn
@@ -91,7 +100,7 @@ resource "aws_lambda_function" "app" {
   reserved_concurrent_executions = var.lambda_reserved_concurrency
 
   # Parameter names only: Lambda reads both secrets from SSM at cold start (R13).
-  environment {
+  environment { # nosemgrep: terraform.aws.security.aws-lambda-environment-unencrypted.aws-lambda-environment-unencrypted
     variables = {
       STORAGE_BACKEND                 = "dynamodb"
       DYNAMODB_TABLE                  = aws_dynamodb_table.app.name
@@ -118,6 +127,7 @@ resource "aws_lambda_function" "app" {
 # Auth NONE: CloudFront can't sign form POSTs. The app rejects requests without the
 # X-Origin-Verify header (R12). The provider adds the public invoke permissions.
 resource "aws_lambda_function_url" "app" {
+  #checkov:skip=CKV_AWS_258:Owner-approved (R12, 2026-10-06). OAC can't sign form POSTs; the app rejects requests without X-Origin-Verify.
   function_name      = aws_lambda_function.app.function_name
   authorization_type = "NONE"
   invoke_mode        = "BUFFERED"

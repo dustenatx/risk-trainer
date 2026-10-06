@@ -13,7 +13,16 @@ locals {
   origin_domain = trimsuffix(trimprefix(aws_lambda_function_url.app.function_url, "https://"), "/")
 }
 
-resource "aws_cloudfront_distribution" "app" {
+resource "aws_cloudfront_distribution" "app" { # nosemgrep: terraform.aws.security.aws-cloudfront-insecure-tls.aws-insecure-cloudfront-distribution-tls-version
+  # Owner-approved skips (2026-10-06, docs/decisions.md):
+  #checkov:skip=CKV2_AWS_32:False positive; the AWS-managed SecurityHeadersPolicy is attached by ID.
+  #checkov:skip=CKV_AWS_174:The default *.cloudfront.net certificate can't set a minimum TLS version; no custom domain in v1 (PRD §10, cost).
+  #checkov:skip=CKV2_AWS_42:No custom domain or certificate in v1 (PRD §10, cost).
+  #checkov:skip=CKV_AWS_86:Access logging off by design (Privacy page); the Free plan has no log delivery.
+  #checkov:skip=CKV_AWS_374:Public learning site; no geo restriction.
+  #checkov:skip=CKV_AWS_305:/ is a dynamic Lambda route; no default root object.
+  #checkov:skip=CKV_AWS_310:Single origin; origin failover is a Premium-plan feature.
+  #checkov:skip=CKV2_AWS_47:Python app, no Java; the Log4j managed rule set doesn't apply.
   enabled         = true
   comment         = var.name
   is_ipv6_enabled = true

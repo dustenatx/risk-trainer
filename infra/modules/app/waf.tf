@@ -3,6 +3,9 @@
 # it bills pay-as-you-go: $5 per month for the web ACL plus $1 per rule, prorated hourly.
 
 resource "aws_wafv2_web_acl" "app" {
+  # Owner-approved skips (2026-10-06, docs/decisions.md):
+  #checkov:skip=CKV_AWS_192:Python app, no Java; the Log4j managed rule set doesn't apply.
+  #checkov:skip=CKV2_AWS_31:WAF request logging needs the Pro plan (cost).
   region      = "us-east-1"
   name        = var.name
   description = "Per-IP rate limit for ${var.name}"

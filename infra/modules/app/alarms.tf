@@ -2,6 +2,7 @@
 # Lambda's Errors metric doesn't see app-handled 500s, so 5xx is alarmed on the Function URL.
 
 resource "aws_sns_topic" "alerts" {
+  #checkov:skip=CKV_AWS_26:Owner-approved 2026-10-06. Alarms can't publish to an aws/sns-encrypted topic; a CMK costs money. Alarm text only.
   # No KMS: CloudWatch alarms can't publish to a topic encrypted with the AWS-managed aws/sns key,
   # and a customer-managed key is on the AGENTS.md cost list.
   name = "${var.name}-alerts"
