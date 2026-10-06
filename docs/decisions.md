@@ -4,6 +4,7 @@ Newest first. One entry per decision that changes the plan: date, decision, reas
 
 | Date | Decision | Reason | By |
 |---|---|---|---|
+| 2026-10-06 | Pin CI runners to ubuntu-24.04; add a timeout to the review job | The ubuntu-latest label changes to Ubuntu 26 on 19 Oct 2026, and we choose when to move; revisit after group 3. The CI jobs already had timeouts; the review job had none, so it would have run to GitHub's 6-hour default if it hung, as other jobs did during the 5 Oct Actions incident. | Dusten |
 | 2026-10-05 | Python 3.14 (`requires-python >=3.14`). | Newest GA Lambda managed runtime (deprecation Jun 2029, per the AWS Lambda runtimes page via aws-knowledge); 3.15 is preview only. | Dusten |
 | 2026-10-05 | `rt approve`/`rt retire` edit only the top-level `status`, `reviewed_by`, `reviewed_on` lines, then re-validate; no round-trip YAML library. | Keeps comments and folded text intact with no new dependency. | Dusten |
 | 2026-10-05 | File name must be `<id>.yaml`; `content/drafts/` holds only drafts with null review fields; `content/scenarios/` holds only approved or retired. | Catches hand edits that bypass `rt approve`; R17 later builds file names from the ID. | Dusten |
