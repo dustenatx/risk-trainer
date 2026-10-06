@@ -5,7 +5,13 @@ description = "Hosted, no-login web app that teaches security risk prioritizatio
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "boto3>=1.43.108",
+    "fastapi>=0.142.2",
+    "itsdangerous>=2.2.0",
+    "jinja2>=3.1.6",
     "pydantic>=2.12",
+    "pydantic-settings>=2.15.0",
+    "python-multipart>=0.0.32",
     "pyyaml>=6.0.3",
     "typer>=0.20",
 ]
@@ -15,12 +21,17 @@ rt = "risk_trainer.cli.main:app"
 
 [dependency-groups]
 dev = [
+    "boto3-stubs[dynamodb]>=1.43.108",
+    "httpx>=0.28.1",
+    "moto[dynamodb]>=5.2.3",
     "mypy>=1.18",
     "pip-audit>=2.10",
     "pytest>=8.4",
     "pytest-cov>=7.0",
+    "pytest-playwright>=0.9.0",
     "ruff>=0.14",
     "types-pyyaml>=6.0.12",
+    "uvicorn>=0.54.0",
 ]
 
 [build-system]
@@ -48,7 +59,8 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers"
+addopts = "-ra --strict-markers -m 'not e2e'"
+markers = ["e2e: browser tests (Playwright); run with make e2e"]
 pythonpath = ["."]
 
 [tool.coverage.run]

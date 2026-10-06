@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Privacy | Risk Trainer{% endblock %}
+{% block content %}
+<h1>Privacy</h1>
+<p>There are no accounts. The app doesn't ask for or keep your name, email address, IP address or browser details.</p>
+
+<h2>What's kept, and for how long</h2>
+<div class="table-wrap">
+<table>
+  <caption>Data and retention</caption>
+  <thead><tr><th scope="col">What</th><th scope="col">What it contains</th><th scope="col">How long</th></tr></thead>
+  <tbody>
+    <tr id="privacy-cookie">
+      <th scope="row">Session cookie</th>
+      <td>The site sets one session cookie. It's used only to protect form submissions, with no tracking. It holds a random token, not who you are.</td>
+      <td>Until you close your browser</td>
+    </tr>
+    <tr id="privacy-attempts">
+      <th scope="row">Your answers</th>
+      <td>The scenario and version, the response and approver you chose for each finding, your score and the time. Used for peer comparisons.</td>
+      <td>180 days, then deleted (the database removes expired records within a few days)</td>
+    </tr>
+    <tr id="privacy-aggregates">
+      <th scope="row">Peer totals</th>
+      <td>Counts of how many learners chose each response. Not linked to any one attempt.</td>
+      <td>Kept</td>
+    </tr>
+    <tr id="privacy-free-text">
+      <th scope="row">Your rationale and note</th>
+      <td>Shown back to you once on the results page. Never stored or logged.</td>
+      <td>Not kept</td>
+    </tr>
+    <tr id="privacy-logs">
+      <th scope="row">Application logs (AWS CloudWatch)</th>
+      <td>Request IDs, pages requested, response codes and timings. The app doesn't log IP addresses.</td>
+      <td>14 days</td>
+    </tr>
+    <tr id="privacy-cdn">
+      <th scope="row">CDN access logs (AWS CloudFront)</th>
+      <td>Standard logging is turned off.</td>
+      <td>Not kept</td>
+    </tr>
+    <tr id="privacy-waf">
+      <th scope="row">Firewall samples (AWS WAF)</th>
+      <td>Sampled requests used to block abuse, including IP addresses.</td>
+      <td>Up to 3 hours, kept by AWS</td>
+    </tr>
+    <tr id="privacy-ci">
+      <th scope="row">Build logs (GitHub Actions)</th>
+      <td>Logs from building and deploying the site. No learner data.</td>
+      <td>GitHub's standard retention</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+{% endblock %}

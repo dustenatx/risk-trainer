@@ -112,3 +112,20 @@ jobs:
       - name: checkov
         if: hashFiles('infra/**/*.tf') != ''
         run: uvx checkov==3.3.21 --directory infra --framework terraform --compact --quiet
+
+  e2e:
+    name: e2e
+    # Not a required check yet; Playwright browser tests for the exercise form (R6).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Install
+        run: uv sync --locked
+      - name: Install Chromium
+        run: uv run playwright install --with-deps chromium
+      - name: Browser tests (pytest -m e2e)
+        run: make e2e

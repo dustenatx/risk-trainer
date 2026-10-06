@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block title %}{{ scenario.title }} | Risk Trainer{% endblock %}
+{% block content %}
+{% set slots = scenario.context.capacity.remediation_slots %}
+<h1>{{ scenario.title }}</h1>
+
+{% if errors %}
+<div class="error-summary" role="alert" tabindex="-1" id="error-summary">
+  <h2>Fix these before you submit</h2>
+  <ul>
+    {% for error in errors %}
+    <li>{% if error.path in ("form", "note") %}{{ error.message }}{% else %}<a href="#finding-{{ error.path }}">{{ error.message }}</a>{% endif %}</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<section class="context" aria-labelledby="context-heading">
+  <h2 id="context-heading">The organization</h2>
+  <dl class="meta">
+    <div><dt>Organization</dt><dd>{{ scenario.context.organization }}</dd></div>
+    <div><dt>Industry</dt><dd>{{ scenario.context.industry }}</dd></div>
+    <div><dt>Size</dt><dd>{{ scenario.context.size }}</dd></div>
+    <div><dt>Risk appetite</dt><dd>{{ scenario.context.risk_appetite }}</dd></div>
+  </dl>
+  {% if scenario.context.constraints %}
+  <h3>Constraints</h3>
+  <ul>{% for c in scenario.context.constraints %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% endif %}
+  <p class="capacity"><strong>Remediation capacity: {{ slots }} finding{{ "" if slots == 1 else "s" }}.</strong> You can choose "{{ treatment_labels[treatments[1]] }}" for at most {{ slots }}.</p>
+</section>
+
+<form method="post" action="/s/{{ scenario.id }}" class="exercise" data-slots="{{ slots }}" novalidate>
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+  <input type="hidden" name="submit_id" value="{{ submit_id }}">
+
+  <p id="slot-status" class="slot-status" aria-live="polite">You have {{ slots }} remediation slot{{ "" if slots == 1 else "s" }}.</p>
+
+  {% for finding in scenario.findings %}
+  {% set fid = finding.id %}
+  {% set chosen = values.get(fid ~ ".treatment", "") %}
+  <section class="finding" id="finding-{{ fid }}" aria-labelledby="title-{{ fid }}">
+    <h2 id="title-{{ fid }}">{{ fid }}: {{ finding.title }}</h2>
+    <p>{{ finding.description }}</p>
+    <dl class="signals">
+      <div><dt>Asset</dt><dd>{{ finding.asset }}</dd></div>
+      <div><dt>Exposure</dt><dd>{{ exposure_labels[finding.exposure] }}</dd></div>
+      <div><dt>CVSS base score</dt><dd>{{ finding.signals.cvss_base if finding.signals.cvss_base is not none else "None (not a scored vulnerability)" }}</dd></div>
+      <div><dt>Known to be exploited</dt><dd>{{ "Yes" if finding.signals.known_exploited else "No" }}</dd></div>
+      <div><dt>Data involved</dt><dd>{{ finding.signals.data_involved or "None" }}</dd></div>
+      <div><dt>Compensating controls available</dt><dd>{% if finding.signals.compensating_controls_available %}<ul>{% for c in finding.signals.compensating_controls_available %}<li>{{ c }}</li>{% endfor %}</ul>{% else %}None listed{% endif %}</dd></div>
+      <div><dt>Remediation effort</dt><dd>{{ finding.signals.remediation_effort.value | capitalize }}</dd></div>
+      <div><dt>Business owner</dt><dd>{{ finding.signals.business_owner }}</dd></div>
+    </dl>
+
+    <fieldset class="choices">
+      <legend>Your response to {{ fid }}</legend>
+      {% for t in treatments %}
+      <div class="choice">
+        <input type="radio" id="{{ fid }}-{{ t.value }}" name="{{ fid }}.treatment" value="{{ t.value }}"{% if loop.first %} required{% endif %}{% if chosen == t.value %} checked{% endif %}{% if t.value == "mitigate_remediate" %} data-remediate{% endif %}{% if t.value == "accept" %} data-accept{% endif %}>
+        <label for="{{ fid }}-{{ t.value }}">{{ treatment_labels[t] }}</label>
+      </div>
+      {% endfor %}
+    </fieldset>
+
+    <div class="accept-only" data-accept-only>
+      <label for="{{ fid }}-approver">Who approves accepting this risk? <span class="hint">(only if you choose Accept)</span></label>
+      <select id="{{ fid }}-approver" name="{{ fid }}.approver">
+        <option value="">Choose an approver</option>
+        {% for a in approvers %}
+        <option value="{{ a.value }}"{% if values.get(fid ~ ".approver") == a.value %} selected{% endif %}>{{ approver_labels[a] }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <label for="{{ fid }}-rationale">Your rationale <span class="hint">(required if you accept: {{ accept_rationale_min }}–{{ rationale_max }} characters; optional otherwise)</span></label>
+    <textarea id="{{ fid }}-rationale" name="{{ fid }}.rationale" maxlength="{{ rationale_max }}" rows="2">{{ values.get(fid ~ ".rationale", "") }}</textarea>
+  </section>
+  {% endfor %}
+
+  <label for="note">Overall note <span class="hint">(optional, up to {{ note_max }} characters; shown back to you, never stored)</span></label>
+  <textarea id="note" name="note" maxlength="{{ note_max }}" rows="3">{{ values.get("note", "") }}</textarea>
+
+  <p class="privacy-hint">Your rationale and note are shown back to you once and never stored. <a href="/privacy">Privacy</a></p>
+  <button type="submit">Submit my answers</button>
+</form>
+{% endblock %}

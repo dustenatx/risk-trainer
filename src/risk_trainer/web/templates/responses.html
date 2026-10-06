@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}The four responses | Risk Trainer{% endblock %}
+{% block content %}
+<h1>The four risk responses</h1>
+<p>Every risk gets a decision. In CISSP terms there are four responses: <strong>avoid</strong>, <strong>mitigate</strong>, <strong>transfer</strong> and <strong>accept</strong>. Ignoring a risk is not one of them.</p>
+
+<section id="response-avoid" aria-labelledby="h-avoid">
+  <h2 id="h-avoid">Avoid</h2>
+  <p>Stop the activity, or retire the asset, that creates the risk. If the thing isn't there, the risk isn't either. Avoidance makes sense when the activity isn't worth what it exposes you to.</p>
+</section>
+
+<section id="response-mitigate" aria-labelledby="h-mitigate">
+  <h2 id="h-mitigate">Mitigate</h2>
+  <p>Lower the likelihood or impact. The exercise splits mitigation into two choices, because they cost different things:</p>
+  <ul>
+    <li><strong>{{ treatment_labels[treatments[1]] }}</strong>: remove the vulnerability by patching, reconfiguring or replacing. This uses one of your limited remediation slots.</li>
+    <li><strong>{{ treatment_labels[treatments[2]] }}</strong>: lower the likelihood or impact without removing the vulnerability, for example by segmenting, restricting access or monitoring.</li>
+  </ul>
+  <p>Both are mitigation. "Fix" and "reduce" aren't separate responses.</p>
+</section>
+
+<section id="response-transfer" aria-labelledby="h-transfer">
+  <h2 id="h-transfer">Transfer (share)</h2>
+  <p>Shift the financial impact to a third party, usually through insurance or a contract. Accountability, regulatory duties and reputational damage stay with your organization.</p>
+</section>
+
+<section id="response-accept" aria-labelledby="h-accept">
+  <h2 id="h-accept">Accept</h2>
+  <p>Make a documented, informed decision to keep the risk. The risk owner or senior management accepts it; security recommends. That's why the exercise asks who approves each acceptance:</p>
+  <ul>
+    {% for a in approvers %}<li>{{ approver_labels[a] }}</li>{% endfor %}
+  </ul>
+</section>
+
+<section aria-labelledby="h-mindset">
+  <h2 id="h-mindset">Thinking like a manager</h2>
+  <p>Risk is likelihood times impact for this organization. A CVSS score measures how severe a vulnerability is in general, not how much risk it creates for you. Weigh exposure, exploitation, the data involved, the controls already in place, and how much the fix costs.</p>
+</section>
+{% endblock %}

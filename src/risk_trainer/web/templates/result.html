@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}Your score: {{ scenario.title }} | Risk Trainer{% endblock %}
+{% block content %}
+<h1>{{ scenario.title }}: your debrief</h1>
+<p class="score" id="score"><strong>{{ debrief.total }} of {{ debrief.maximum }} points ({{ debrief.percent }}%)</strong></p>
+
+<div class="table-wrap">
+<table class="results">
+  <caption>Your choices compared with the expert answer</caption>
+  <thead>
+    <tr><th scope="col">Finding</th><th scope="col">Your choice</th><th scope="col">Expert choice</th><th scope="col">Points</th></tr>
+  </thead>
+  <tbody>
+    {% for row in debrief.rows %}
+    <tr>
+      <th scope="row"><a href="#debrief-{{ row.finding_id }}">{{ row.finding_id }}</a></th>
+      <td>{{ treatment_labels[row.learner_treatment] }}{% if row.learner_approver %}<br><span class="hint">Approver: {{ approver_labels[row.learner_approver] }}</span>{% endif %}</td>
+      <td>{{ treatment_labels[row.expert_treatment] }}</td>
+      <td>{{ row.points }} / {{ row.max_points }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+
+{% for row in debrief.rows %}
+<section class="finding-debrief" id="debrief-{{ row.finding_id }}" aria-labelledby="debrief-title-{{ row.finding_id }}">
+  <h2 id="debrief-title-{{ row.finding_id }}">{{ row.finding_id }}: {{ row.title }}</h2>
+  {% if row.learner_rationale %}
+  <h3>Your rationale</h3>
+  <p class="learner-text">{{ row.learner_rationale }}</p>
+  {% endif %}
+  <h3>Expert rationale</h3>
+  <p>{{ row.expert_rationale }}</p>
+  {% if row.why_not %}
+  <h3>Why not {{ treatment_labels[row.learner_treatment] }}?</h3>
+  <p class="why-not">{{ row.why_not }}</p>
+  {% endif %}
+  {% if row.approver_feedback %}
+  <p class="approver-feedback">{{ row.approver_feedback }}</p>
+  {% endif %}
+  <h3>Key considerations</h3>
+  <ul>{% for k in row.key_considerations %}<li>{{ k }}</li>{% endfor %}</ul>
+  {% if peers %}
+  <h3>How other learners answered</h3>
+  <ul class="peers">
+    {% for t in treatments %}
+    <li>{{ treatment_labels[t] }}: {{ peers.percents[row.finding_id][t] }}%</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endfor %}
+
+<section aria-labelledby="overall-heading">
+  <h2 id="overall-heading">The big picture</h2>
+  <p>{{ debrief.overall_debrief }}</p>
+  {% if debrief.common_traps %}
+  <h3>Common traps</h3>
+  <ul>{% for trap in debrief.common_traps %}<li>{{ trap }}</li>{% endfor %}</ul>
+  {% endif %}
+  {% if debrief.job_tip %}
+  <h3>On the job</h3>
+  <p class="job-tip">{{ debrief.job_tip }}</p>
+  {% endif %}
+  {% if debrief.exam_tip %}
+  <h3>Exam tip</h3>
+  <p class="exam-tip">{{ debrief.exam_tip }}</p>
+  {% endif %}
+  {% if debrief.note %}
+  <h3>Your note</h3>
+  <p class="learner-text">{{ debrief.note }}</p>
+  {% endif %}
+</section>
+
+<section aria-labelledby="peers-heading">
+  <h2 id="peers-heading">Other learners</h2>
+  {% if peers %}
+  <p>Based on {{ peers.attempts }} attempts at this version of the scenario, including yours.</p>
+  {% else %}
+  <p>Peer results appear once enough people have tried this scenario.</p>
+  {% endif %}
+</section>
+
+<p><a href="/s/{{ scenario.id }}">Try this scenario again</a> · <a href="/">More scenarios</a></p>
+{% endblock %}

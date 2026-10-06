@@ -18,7 +18,20 @@
     "semgrep": {
       "type": "stdio",
       "command": "semgrep",
-      "args": ["mcp"]
+      "args": [
+        "mcp"
+      ]
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@0.0.83",
+        "--isolated",
+        "--allowed-origins",
+        "http://127.0.0.1:8000;http://localhost:8000"
+      ]
     }
   }
 }
