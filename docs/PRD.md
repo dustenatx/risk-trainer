@@ -4,8 +4,8 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.5 — 6 Oct 2026 (group 5.2 plan: `rt preview`, submission rules, `why_not` in the debrief, storage settings) |
-| Status | Owner-reviewed and spec-reviewed; group 5.1 built; group 5.2 in progress |
+| Version | 1.6 — 6 Oct 2026 (group 5.3 plan: app-side security headers, origin header check, submission-only rate limit, Mangum, `rt package`) |
+| Status | Owner-reviewed and spec-reviewed; groups 5.1–5.2 built; group 5.3 in progress |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
@@ -178,24 +178,24 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - WHERE the AWS account is eligible, the distribution SHALL be subscribed to CloudFront's Free flat-rate plan and SHALL use its included WAF, with a rate-based rule per client IP.
 - IF the account is not eligible, THEN the system SHALL NOT add a paid standalone WAF; it SHALL rely on application rate limits (R13) and Lambda reserved concurrency.
 - Before group 5.3 is built, the owner SHALL confirm in the AWS console that the account (Paid plan) is eligible for the Free flat-rate plan and record the result in `docs/decisions.md`.
-- CloudFront SHALL attach a response-headers policy enforcing HSTS, a strict Content-Security-Policy (no inline scripts, no third-party script origins), X-Content-Type-Options, Referrer-Policy and frame-ancestors 'none'.
-- The application origin SHALL NOT be publicly reachable except through CloudFront.
+- The application SHALL send HSTS, a strict Content-Security-Policy (no inline scripts, no third-party script origins), X-Content-Type-Options, Referrer-Policy and frame-ancestors 'none' on every response. CloudFront SHALL attach the AWS-managed SecurityHeadersPolicy as a backstop. (The Free flat-rate plan allows only AWS-managed response-headers policies, and the managed policy keeps the origin's values.)
+- The application origin (a Lambda Function URL) SHALL reject with HTTP 403 every request that does not carry the secret origin header CloudFront adds, before reading the session or the body. The header value SHALL be an SSM SecureString, and the app SHALL refuse to start in Lambda without it.
 
 **R13 — Compute, data and cost ceilings.**
 - The app SHALL run on AWS Lambda (Python) behind CloudFront, with reserved concurrency set by `LAMBDA_RESERVED_CONCURRENCY` (default 5).
 - Session and attempt data SHALL live in DynamoDB in provisioned-capacity mode with TTL enabled. Provisioned capacity across all tables SHALL total no more than 25 RCU and 25 WCU, with auto scaling off, and stored data SHALL stay under 1 GB (the always-free allowance is 25 RCU, 25 WCU and 25 GB).
-- The application SHALL rate-limit each session to `REQUESTS_PER_SESSION_PER_MINUTE` (default 60) and return HTTP 429 above it. A new session resets this limit, so it is a courtesy limit, not an abuse control; the abuse backstops are the WAF per-IP rate rule (where eligible) and Lambda reserved concurrency.
-- Secrets SHALL live in SSM Parameter Store SecureString (standard tier) and SHALL NOT be in the repository or in Lambda environment variables in plaintext.
+- The application SHALL limit each session to `REQUESTS_PER_SESSION_PER_MINUTE` (default 60) exercise submissions (POST) per minute and return HTTP 429 above it. GET requests are not counted. The count is kept in DynamoDB with a TTL. IF the counter is unavailable, THEN the submission SHALL proceed, and the event SHALL be logged and counted as a metric. A new session resets this limit, so it is a courtesy limit, not an abuse control; the abuse backstops are the WAF per-IP rate rule (where eligible) and Lambda reserved concurrency.
+- Secrets SHALL live in SSM Parameter Store SecureString (standard tier) and SHALL NOT be in the repository or in Lambda environment variables in plaintext. The app SHALL refuse to start in Lambda if a plaintext secret is set in its environment.
 - CloudWatch log groups SHALL keep logs for 14 days.
 
 **R14 — CI/CD.**
 - Deployments SHALL use GitHub Actions with OIDC federation to AWS; no long-lived AWS keys.
 - WHEN a change merges to `main`, THEN CI SHALL produce a Terraform plan, and apply SHALL wait for manual approval through a protected GitHub environment.
-- The build SHALL package only `approved` scenarios. IF any approved scenario fails validation, THEN the build SHALL fail.
+- The build SHALL package only `approved` scenarios (`rt package`). IF any approved scenario fails validation, THEN the build SHALL fail and write no package. The same inputs SHALL produce a byte-identical package.
 
 **R15 — Observability and cost.**
 - Logs SHALL be structured JSON with a request ID. Rationale text SHALL never be logged.
-- The system SHALL emit metrics for attempts, 429 responses and, once group 5.5 ships, MCP tool calls. Custom metrics SHALL stay within the always-free allowance.
+- The system SHALL emit metrics for attempts, 429 responses, rate-limit counter failures and, once group 5.5 ships, MCP tool calls, as CloudWatch embedded metric format log lines with no dimensions. Custom metrics SHALL stay within the always-free allowance (10).
 - Alarms SHALL notify the owner by email (SNS) on sustained 5xx errors, Lambda errors and Lambda throttles.
 - AWS Budgets SHALL alert by email on any spend beyond the Free Tier (Zero spend budget) and above `MONTHLY_BUDGET_USD` (default 1). Budgets detect spend, can lag by hours, and cap nothing. Spending is capped by Lambda reserved concurrency, DynamoDB provisioned capacity (it throttles instead of billing more), the CloudFront flat-rate plan's no-overage terms, and the rate limits in R13.
 
@@ -243,7 +243,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 | Area | Requirement |
 |---|---|
 | Security | OWASP ASVS Level 1 baseline. Signed session cookie (HttpOnly, Secure, SameSite=Lax); CSRF token on every state-changing request; server-side input length limits; Jinja autoescape on; htmx vendored and served from the app's own origin. MCP servers follow the least-privilege tool sets in R16 and R19. |
-| Privacy | No accounts and no direct identifiers (name, email, IP address, user agent) in application data. The app keeps a pseudonymous session ID in a signed cookie and records structured choices with a timestamp per attempt (R9). Free text is not persisted or logged, whether it arrives through the web or MCP. Outside the app: CloudWatch Logs (14 days; request IDs, no IP addresses logged by the app), CloudFront standard logging off, AWS WAF sampled requests (include IP addresses; AWS keeps them for up to 3 hours), and GitHub Actions logs (no learner data). The Privacy page lists each of these with its retention. |
+| Privacy | No accounts and no direct identifiers (name, email, IP address, user agent) in application data. The app keeps a pseudonymous session ID in a signed cookie and records structured choices with a timestamp per attempt (R9). A per-session submission counter, keyed by that random session ID, expires after 2 minutes (R13). Free text is not persisted or logged, whether it arrives through the web or MCP. Outside the app: CloudWatch Logs (14 days; request IDs, no IP addresses logged by the app), CloudFront standard logging off, AWS WAF sampled requests (include IP addresses; AWS keeps them for up to 3 hours), and GitHub Actions logs (no learner data). The Privacy page lists each of these with its retention. |
 | Reliability | No runtime dependency on any LLM. The web exercise works whether or not the MCP endpoint exists. |
 | Performance | p95 server time under 500 ms for web routes at demo load (warm). Cold starts of up to about 5 s are acceptable for v1. |
 | Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. The hard ceilings in R13 and R15 cap spend; budget alerts only detect drift. |
@@ -307,8 +307,8 @@ v1 launches after groups 5.1–5.3. The scenarios may be drafted in a Claude cha
 
 ## 10. Deferred decisions (resolve in the Claude Code plan for the group that needs them)
 
-- Lambda adapter: Mangum or AWS Lambda Web Adapter. Pick one actively maintained option and justify it.
-- Origin pattern: CloudFront → API Gateway HTTP API → Lambda, or CloudFront → Lambda Function URL. A Function URL behind OAC requires clients to send an `x-amz-content-sha256` header on POST, which plain HTML form and htmx POSTs do not do. Also weigh which pattern stays free: API Gateway requests are not always-free.
+- ~~Lambda adapter~~ Resolved (v1.6): Mangum. It's a pure-Python ASGI handler for Function URL events, needs no layer and no server process, and is maintained (0.22.0).
+- ~~Origin pattern~~ Resolved (v1.6): CloudFront → Lambda Function URL (auth `NONE`), with a secret origin header that the app checks (R12). OAC would need an `x-amz-content-sha256` header on every POST, which plain forms can't send. API Gateway isn't always-free and can't be limited to CloudFront either.
 - Whether the chosen origin works with CloudFront's Free flat-rate plan on this account.
 - Group 5.5 transport details on Lambda: stateless streamable HTTP with JSON responses; how cold starts affect the connector.
 - Custom domain (Route 53 + ACM) or the default CloudFront domain. Default for v1, because a domain costs money.

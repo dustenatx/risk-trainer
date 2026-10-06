@@ -12,6 +12,7 @@ from risk_trainer.domain.models import Scenario
 from risk_trainer.domain.rules import parse_scenario
 from risk_trainer.storage.attempts import AttemptStore
 from risk_trainer.storage.memory import MemoryAttemptStore
+from risk_trainer.storage.rate_limits import RateLimiter
 from risk_trainer.web.app import create_app
 from tests.helpers import RT001_DATA, approved
 
@@ -59,6 +60,7 @@ def client(
     store: AttemptStore | None = None,
     *,
     preview: bool = False,
+    rate_limiter: RateLimiter | None = None,
     **setting_overrides: Any,
 ) -> TestClient:
     app = create_app(
@@ -66,6 +68,7 @@ def client(
         store if store is not None else MemoryAttemptStore(),
         scenarios if scenarios is not None else [rt001()],
         preview=preview,
+        rate_limiter=rate_limiter,
     )
     return TestClient(app, base_url="https://testserver", raise_server_exceptions=False)
 

@@ -1,5 +1,6 @@
-"""FastAPI app factory (PRD R5-R10)."""
+"""FastAPI app factory (PRD R5-R10, R12, R13, R15)."""
 
+from collections.abc import Mapping
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -10,14 +11,17 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.types import Scope
 
-from risk_trainer.config import Settings, check_storage
+from risk_trainer.config import ConfigError, Settings, check_ready, check_storage
 from risk_trainer.content.repository import load_publishable
 from risk_trainer.domain.models import Exposure, Scenario
 from risk_trainer.domain.treatments import APPROVER_LABELS, TREATMENT_LABELS, Approver, Treatment
 from risk_trainer.storage.attempts import AttemptStore
+from risk_trainer.storage.rate_limits import RateLimiter
 from risk_trainer.web.logging import configure_logging
+from risk_trainer.web.metrics import Metrics
 from risk_trainer.web.middleware import (
     BodyLimitMiddleware,
+    OriginVerifyMiddleware,
     RequestContextMiddleware,
     SecurityHeadersMiddleware,
 )
@@ -39,6 +43,7 @@ ERROR_TITLES = {
     405: "Not allowed",
     413: "That submission is too large",
     422: "Something in the form needs fixing",
+    429: "Too many submissions",
     500: "Something went wrong",
 }
 
@@ -67,15 +72,33 @@ def build_store(settings: Settings) -> AttemptStore:
     return DynamoAttemptStore(make_client(settings.aws_region), table)
 
 
+def build_rate_limiter(settings: Settings) -> RateLimiter:
+    """The per-session submission counter lives in the same store as the attempts (R13)."""
+    check_storage(settings)
+    if settings.storage_backend == "memory":
+        from risk_trainer.storage.rate_limits import MemoryRateLimiter
+
+        return MemoryRateLimiter()
+    from risk_trainer.storage.dynamodb import make_client
+    from risk_trainer.storage.rate_limits import DynamoRateLimiter
+
+    return DynamoRateLimiter(make_client(settings.aws_region), settings.dynamodb_table or "")
+
+
 def create_app(
     settings: Settings,
     store: AttemptStore | None = None,
     scenarios: list[Scenario] | None = None,
     *,
     preview: bool = False,
+    rate_limiter: RateLimiter | None = None,
 ) -> FastAPI:
-    """Build the app. Refuses unsafe storage settings (memory storage inside Lambda)."""
-    check_storage(settings)
+    """Build the app. Refuses unsafe settings: memory storage or no origin check in Lambda,
+    or a session secret that hasn't been loaded."""
+    check_ready(settings)
+    session_secret = settings.session_secret
+    if session_secret is None:  # check_ready has refused this; narrows the type
+        raise ConfigError("the session secret has not been loaded")
     configure_logging(settings.log_level)
     templates = make_templates()
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -83,6 +106,10 @@ def create_app(
     app.state.templates = templates
     app.state.preview = preview
     app.state.store = store if store is not None else build_store(settings)
+    app.state.rate_limiter = (
+        rate_limiter if rate_limiter is not None else build_rate_limiter(settings)
+    )
+    app.state.metrics = Metrics(settings.metrics_namespace)
     loaded = scenarios if scenarios is not None else load_publishable(settings.content_dir)
     app.state.scenarios = {scenario.id: scenario for scenario in loaded}
 
@@ -91,7 +118,12 @@ def create_app(
         response = error_response(request, status, request_id)
         return bytes(response.body), "text/html; charset=utf-8"
 
-    def error_response(request: Request, status: int, request_id: str | None = None) -> Response:
+    def error_response(
+        request: Request,
+        status: int,
+        request_id: str | None = None,
+        headers: Mapping[str, str] | None = None,
+    ) -> Response:
         return templates.TemplateResponse(
             request,
             "error.html",
@@ -102,11 +134,12 @@ def create_app(
                 "preview": preview,
             },
             status_code=status,
+            headers=headers,
         )
 
     @app.exception_handler(StarletteHTTPException)
     async def http_error(request: Request, exc: StarletteHTTPException) -> Response:
-        return error_response(request, exc.status_code)
+        return error_response(request, exc.status_code, headers=exc.headers)
 
     app.include_router(pages.router)
     app.include_router(exercise.router)
@@ -115,13 +148,17 @@ def create_app(
     # Added innermost first: the last one added runs first.
     app.add_middleware(
         SessionMiddleware,
-        secret_key=settings.session_secret.get_secret_value(),
+        secret_key=session_secret.get_secret_value(),
         session_cookie=SESSION_COOKIE,
         max_age=None,
         same_site="lax",
         https_only=settings.session_cookie_secure,
     )
     app.add_middleware(BodyLimitMiddleware, render_error=render_error)
+    if settings.origin_verify_secret is not None:
+        app.add_middleware(
+            OriginVerifyMiddleware, secret=settings.origin_verify_secret.get_secret_value()
+        )
     app.add_middleware(RequestContextMiddleware, render_error=render_error)
     app.add_middleware(SecurityHeadersMiddleware)
     return app

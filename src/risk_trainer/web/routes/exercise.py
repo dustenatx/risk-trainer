@@ -1,4 +1,5 @@
-"""The exercise form, submission, scoring and debrief (PRD R6-R9)."""
+"""The exercise form, submission, scoring and debrief (PRD R6-R9), with the per-session
+submission limit (R13) and the attempt metric (R15)."""
 
 import logging
 import re
@@ -21,7 +22,9 @@ from risk_trainer.domain.submission import (
     parse_submission,
 )
 from risk_trainer.storage.attempts import AttemptRecord, AttemptStore, Choice, StorageError
-from risk_trainer.web.csrf import CSRF_FIELD, csrf_token, csrf_valid
+from risk_trainer.storage.rate_limits import RateLimiter, RateLimitUnavailable
+from risk_trainer.web.csrf import CSRF_FIELD, csrf_token, csrf_valid, session_id
+from risk_trainer.web.metrics import Metric, Metrics
 
 logger = logging.getLogger("risk_trainer.web.exercise")
 router = APIRouter()
@@ -85,6 +88,7 @@ async def submit(request: Request, scenario_id: str) -> Response:
     tokens = control[CSRF_FIELD]
     if len(tokens) != 1 or not csrf_valid(request, tokens[0]):
         raise HTTPException(status_code=403)
+    _check_rate_limit(request, scenario)
 
     values = dict(answers)
     submit_ids = control[SUBMIT_ID_FIELD]
@@ -112,6 +116,29 @@ async def submit(request: Request, scenario_id: str) -> Response:
         },
     )
     return response
+
+
+def _check_rate_limit(request: Request, scenario: Scenario) -> None:
+    """At most REQUESTS_PER_SESSION_PER_MINUTE submissions per session (R13).
+
+    Runs after the CSRF check, so every counted request has a valid session. If the counter
+    is unavailable the submission goes through: this is a courtesy limit, not an abuse control.
+    """
+    limiter: RateLimiter = request.app.state.rate_limiter
+    metrics: Metrics = request.app.state.metrics
+    try:
+        count = limiter.hit(session_id(request), datetime.now(UTC))
+    except RateLimitUnavailable:
+        logger.warning(
+            "rate limit unavailable",
+            extra={"event": "rate_limit_unavailable", "scenario_id": scenario.id},
+        )
+        metrics.count(Metric.RATE_LIMIT_UNAVAILABLE)
+        return
+    if count > request.app.state.settings.requests_per_session_per_minute:
+        logger.info("rate limited", extra={"event": "rate_limited", "scenario_id": scenario.id})
+        metrics.count(Metric.RATE_LIMITED)
+        raise HTTPException(status_code=429, headers={"Retry-After": "60"})
 
 
 def _record_and_count(
@@ -144,6 +171,9 @@ def _record_and_count(
         "attempt recorded" if recorded else "duplicate submission",
         extra={"event": "attempt" if recorded else "duplicate_attempt", "scenario_id": scenario.id},
     )
+    if recorded:
+        metrics: Metrics = request.app.state.metrics
+        metrics.count(Metric.ATTEMPTS)
     return distribution(
         counts.attempts,
         counts.counters,

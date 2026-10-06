@@ -125,8 +125,12 @@ def validate_tree(content_dir: Path) -> list[FileReport]:
     return reports
 
 
-def load_publishable(content_dir: Path) -> list[Scenario]:
-    """Approved scenarios only (no drafts or retired). Raises ScenarioInvalid on any error."""
+def publishable_reports(content_dir: Path) -> list[FileReport]:
+    """Reports for approved scenarios only (no drafts or retired), each with its file path.
+
+    Raises ScenarioInvalid if any file in content/scenarios/ has an error, so neither the app
+    nor the build (R14) can start with a broken approved scenario.
+    """
     folder = content_dir / SCENARIOS_DIR
     reports = [r for r in validate_tree(content_dir) if r.path.parent == folder]
     errors = [
@@ -136,11 +140,12 @@ def load_publishable(content_dir: Path) -> list[Scenario]:
     ]
     if errors:
         raise ScenarioInvalid(errors)
-    return [
-        r.scenario
-        for r in reports
-        if r.scenario is not None and r.scenario.status is Status.APPROVED
-    ]
+    return [r for r in reports if r.scenario is not None and r.scenario.status is Status.APPROVED]
+
+
+def load_publishable(content_dir: Path) -> list[Scenario]:
+    """Approved scenarios only (no drafts or retired). Raises ScenarioInvalid on any error."""
+    return [r.scenario for r in publishable_reports(content_dir) if r.scenario is not None]
 
 
 def load_previewable(content_dir: Path) -> tuple[list[Scenario], list[FileReport]]:
