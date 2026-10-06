@@ -68,8 +68,79 @@ In AWS, the Lambda entry point is `risk_trainer.web.lambda_handler.handler` (Man
 
 ## Infrastructure
 
-Terraform lives in `infra/`. The owner applies `infra/bootstrap/` once (state bucket, GitHub OIDC roles); its runbook is [`infra/bootstrap/README.md`](infra/bootstrap/README.md). The app infrastructure and deploy workflow follow in group 5.3.
+Terraform lives in `infra/`. The owner applies `infra/bootstrap/` once (state bucket, GitHub OIDC roles); its runbook is [`infra/bootstrap/README.md`](infra/bootstrap/README.md). `infra/modules/app/` is the app (us-east-2, except the CloudFront-scope WAF web ACL in us-east-1), and `infra/envs/prod/` is the only environment (`dev/` will be added when needed).
+
+| Resource | Notes |
+|---|---|
+| CloudFront distribution | HTTPS only, default `*.cloudfront.net` domain. AWS-managed policies: CachingDisabled + AllViewerExceptHostHeader for pages, CachingOptimized for `/static/*`, SecurityHeadersPolicy on both. Sends `X-Origin-Verify` from SSM. Standard logging off. |
+| WAF web ACL (us-east-1) | One rate-based rule per client IP. Covered by the Free flat-rate plan after subscription. |
+| Lambda + Function URL | Python 3.14, arm64, 512 MB, 10 s, reserved concurrency `lambda_reserved_concurrency`. Auth `NONE`; the app returns 403 without the CloudFront header. |
+| DynamoDB table | Provisioned 25 RCU / 25 WCU (the always-free allowance for the whole Region), TTL on `expires_at`, deletion protection on. |
+| IAM role | Inline policy only, capped by the bootstrap `risk-trainer-app-boundary`. |
+| Logs, alarms, budgets | 14-day log group; alarms on Function URL 5xx, Lambda errors and throttles (email via SNS); a zero-spend budget and a `monthly_budget_usd` budget. |
+
+### Terraform variables (`infra/envs/prod`)
+
+| Variable | Default | Source / notes |
+|---|---|---|
+| `alert_email` | none (sensitive) | GitHub secret `ALERT_EMAIL`, as a repository secret (plan job) and a `prod` environment secret (apply job). |
+| `ssm_kms_key_arn` | none | Repository variable `SSM_KMS_KEY_ARN`: `aws kms describe-key --key-id alias/aws/ssm --query KeyMetadata.Arn --output text`. |
+| `lambda_zip_path` | `../../../dist/lambda.zip` | Built by `make package` in the workflow. |
+| `lambda_reserved_concurrency` | `5` | `LAMBDA_RESERVED_CONCURRENCY` in the PRD (R13). Needs at least 105 unreserved concurrency in the account. |
+| `requests_per_session_per_minute` | `60` | Passed to the app as `REQUESTS_PER_SESSION_PER_MINUTE`. |
+| `waf_rate_limit_per_5min` | `300` | Requests per IP per 5 minutes before WAF blocks (minimum 10). |
+| `monthly_budget_usd` | `1` | `MONTHLY_BUDGET_USD` in the PRD (R15). |
+
+## Deploying
+
+`.github/workflows/deploy.yml` runs on every push to `main` (and by hand). **plan** assumes `risk-trainer-gha-plan`, builds the package, and writes `terraform show -no-color` to the job summary after a leak check for the origin secret and alert email. **apply** waits for your approval in the `prod` environment, assumes `risk-trainer-gha-deploy`, rebuilds the (reproducible) package, re-plans and applies. The repository is public, so no plan file or JSON plan is ever uploaded.
+
+GitHub configuration it needs:
+
+| Name | Kind | Where |
+|---|---|---|
+| `TF_STATE_BUCKET`, `AWS_PLAN_ROLE_ARN`, `SSM_KMS_KEY_ARN` | variables | repository |
+| `ALERT_EMAIL` | secret | repository (plan) and `prod` environment (apply) |
+| `AWS_DEPLOY_ROLE_ARN` | variable | `prod` environment (required reviewer: owner; branch: `main`) |
+
+### First deploy (owner)
+
+1. Merge, open the **plan** job summary, read the plan, approve **apply** in the `prod` environment.
+2. Confirm the SNS subscription email ("AWS Notification - Subscription Confirmation").
+3. Subscribe the distribution to the CloudFront Free flat-rate plan. Do it right away: until then the web ACL bills pay-as-you-go (about $0.008 an hour). The pipeline is denied this action.
+   ```sh
+   cd infra/envs/prod && terraform init -backend-config="bucket=<TF_STATE_BUCKET>"   # with AWS_PROFILE=rt-admin
+   aws pricing-plan-manager create-subscription --profile rt-admin --region us-east-1 \
+     --plan-family CloudFront --plan-tier FREE \
+     --resource-arns "$(terraform output -raw distribution_arn)" "$(terraform output -raw web_acl_arn)"
+   aws pricing-plan-manager list-subscriptions --profile rt-admin --region us-east-1   # FREE, ACTIVE
+   ```
+   Record the date in `docs/decisions.md` (it confirms R12 eligibility).
+4. Run the workflow again (Actions, Deploy, Run workflow) and check that the plan shows no changes after the subscription.
+5. Check it by hand:
+   ```sh
+   curl -sI https://<distribution>.cloudfront.net/ | grep -iE "strict-transport|content-security|x-content-type|referrer"
+   curl -s -o /dev/null -w "%{http_code}\n" http://<distribution>.cloudfront.net/      # 301 to HTTPS
+   curl -s -o /dev/null -w "%{http_code}\n" "$(terraform output -raw function_url)"   # 403
+   make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net        # Playwright: headers, redirect, one scenario
+   ```
+
+### Rotating secrets
+
+Both secrets are SSM SecureStrings. Run the same command used to create them, with `--overwrite`; the value is generated inline, never shown or typed:
+
+```sh
+aws ssm put-parameter --profile rt-admin --region us-east-2 --type SecureString --tier Standard --overwrite \
+  --name /risk-trainer/prod/session-secret --value "$(openssl rand -base64 48)"
+aws ssm put-parameter --profile rt-admin --region us-east-2 --type SecureString --tier Standard --overwrite \
+  --name /risk-trainer/prod/origin-verify  --value "$(openssl rand -hex 32)"
+```
+
+Then run the Deploy workflow and approve it. Terraform reads each parameter's version into the Lambda's `SECRETS_VERSION`, so the configuration change replaces warm instances and they load the new values; for the origin secret it also updates the CloudFront header.
+
+- Session secret: existing cookies stop validating, so an open form shows "This form has expired" once.
+- Origin secret: for a few minutes while CloudFront propagates, requests can get 403. Rotate at a quiet time.
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every pull request: `check` (ruff, mypy, pytest, rt validate), `gitleaks`, `semgrep`, `pip-audit`, `iac` (terraform fmt, validate, `terraform test` with a mocked provider, and checkov), and `e2e` (Playwright; not a required check yet). `claude-code-review.yml` runs the read-only Claude reviewer. CodeQL runs through GitHub's default setup.
+`.github/workflows/ci.yml` runs on every pull request: `check` (ruff, mypy, pytest, rt validate), `gitleaks`, `semgrep`, `pip-audit`, `iac` (terraform fmt, validate, `terraform test` with a mocked provider, and checkov), and `e2e` (Playwright; not a required check yet). `deploy.yml` plans and applies `infra/envs/prod` (see Deploying). `claude-code-review.yml` runs the read-only Claude reviewer. CodeQL runs through GitHub's default setup.

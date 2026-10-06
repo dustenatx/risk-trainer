@@ -1,4 +1,4 @@
-.PHONY: check lint types test validate audit format e2e package
+.PHONY: check lint types test validate audit format e2e package smoke
 
 check: lint types test validate
 
@@ -17,6 +17,10 @@ validate:
 
 e2e:
 	uv run pytest -m e2e tests/e2e
+
+# Against the deployed app (PRD §9 item 4): make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net
+smoke:
+	SMOKE_BASE_URL="$(SMOKE_BASE_URL)" uv run pytest -m smoke tests/e2e
 
 audit:
 	uv export --locked --no-emit-project --format requirements-txt --quiet -o .audit-requirements.txt

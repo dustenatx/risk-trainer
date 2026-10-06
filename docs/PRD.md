@@ -4,7 +4,7 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.6 — 6 Oct 2026 (group 5.3 plan: app-side security headers, origin header check, submission-only rate limit, Mangum, `rt package`) |
+| Version | 1.7 — 6 Oct 2026 (group 5.3 infra: Free-plan eligibility confirmed at subscription; origin and domain decisions resolved) |
 | Status | Owner-reviewed and spec-reviewed; groups 5.1–5.2 built; group 5.3 in progress |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
@@ -177,7 +177,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - The system SHALL be served only over HTTPS through CloudFront.
 - WHERE the AWS account is eligible, the distribution SHALL be subscribed to CloudFront's Free flat-rate plan and SHALL use its included WAF, with a rate-based rule per client IP.
 - IF the account is not eligible, THEN the system SHALL NOT add a paid standalone WAF; it SHALL rely on application rate limits (R13) and Lambda reserved concurrency.
-- Before group 5.3 is built, the owner SHALL confirm in the AWS console that the account (Paid plan) is eligible for the Free flat-rate plan and record the result in `docs/decisions.md`.
+- Eligibility for the Free flat-rate plan is confirmed when the owner subscribes the distribution to the Free plan, and the owner records the date in `docs/decisions.md`.
 - The application SHALL send HSTS, a strict Content-Security-Policy (no inline scripts, no third-party script origins), X-Content-Type-Options, Referrer-Policy and frame-ancestors 'none' on every response. CloudFront SHALL attach the AWS-managed SecurityHeadersPolicy as a backstop. (The Free flat-rate plan allows only AWS-managed response-headers policies, and the managed policy keeps the origin's values.)
 - The application origin (a Lambda Function URL) SHALL reject with HTTP 403 every request that does not carry the secret origin header CloudFront adds, before reading the session or the body. The header value SHALL be an SSM SecureString, and the app SHALL refuse to start in Lambda without it.
 
@@ -309,7 +309,7 @@ v1 launches after groups 5.1–5.3. The scenarios may be drafted in a Claude cha
 
 - ~~Lambda adapter~~ Resolved (v1.6): Mangum. It's a pure-Python ASGI handler for Function URL events, needs no layer and no server process, and is maintained (0.22.0).
 - ~~Origin pattern~~ Resolved (v1.6): CloudFront → Lambda Function URL (auth `NONE`), with a secret origin header that the app checks (R12). OAC would need an `x-amz-content-sha256` header on every POST, which plain forms can't send. API Gateway isn't always-free and can't be limited to CloudFront either.
-- Whether the chosen origin works with CloudFront's Free flat-rate plan on this account.
+- ~~Free flat-rate plan with this origin~~ Resolved (v1.7): the distribution uses only plan-supported features (managed policies, 2 cache behaviors, 1 WAF rule, no logging). Confirmed when the owner subscribes (R12).
 - Group 5.5 transport details on Lambda: stateless streamable HTTP with JSON responses; how cold starts affect the connector.
 - Custom domain (Route 53 + ACM) or the default CloudFront domain. Default for v1, because a domain costs money.
 

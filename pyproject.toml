@@ -60,8 +60,11 @@ files = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers -m 'not e2e'"
-markers = ["e2e: browser tests (Playwright); run with make e2e"]
+addopts = "-ra --strict-markers -m 'not e2e and not smoke'"
+markers = [
+    "e2e: browser tests (Playwright); run with make e2e",
+    "smoke: launch smoke test against the deployed app; run with make smoke SMOKE_BASE_URL=...",
+]
 pythonpath = ["."]
 
 [tool.coverage.run]
