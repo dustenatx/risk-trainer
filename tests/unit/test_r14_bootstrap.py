@@ -34,8 +34,15 @@ def test_r14_trust_policies_use_exact_subjects() -> None:
     assert re.search(r'"\$\{local\.oidc_host\}:aud"\s*=\s*local\.oidc_audience', role)
     assert re.search(r'"\$\{local\.oidc_host\}:sub"\s*=\s*each\.value', role)
     text = bootstrap_text()
-    assert 'plan_sub   = "repo:${var.github_repository}:ref:refs/heads/main"' in text
-    assert 'deploy_sub = "repo:${var.github_repository}:environment:prod"' in text
+    # GitHub's immutable subject: owner@owner_id/name@repo_id.
+    assert (
+        'gh_repo    = "${local.gh_owner}@${var.github_owner_id}/'
+        '${local.gh_name}@${var.github_repository_id}"' in text
+    )
+    assert 'plan_sub   = "repo:${local.gh_repo}:ref:refs/heads/main"' in text
+    assert 'deploy_sub = "repo:${local.gh_repo}:environment:prod"' in text
+    assert re.search(r'variable\s+"github_owner_id"\s*\{[^}]*default\s*=\s*"54679392"', text)
+    assert re.search(r'variable\s+"github_repository_id"\s*\{[^}]*default\s*=\s*"1398551921"', text)
     assert not re.search(r'_sub\s*=\s*"[^"]*\*', text), "no wildcard in an OIDC subject"
 
 
