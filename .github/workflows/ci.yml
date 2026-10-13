@@ -39,6 +39,9 @@ jobs:
     name: gitleaks
     runs-on: ubuntu-24.04
     timeout-minutes: 5
+    permissions:
+      contents: read
+      security-events: write
     env:
       GITLEAKS_VERSION: 8.30.1
       GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
@@ -54,12 +57,27 @@ jobs:
           echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum --check
           tar -xzf gitleaks.tar.gz gitleaks
       - name: Scan git history
-        run: ./gitleaks git --no-banner --redact --exit-code 1 .
+        run: >-
+          ./gitleaks git --no-banner --redact --exit-code 1
+          --report-format sarif --report-path gitleaks.sarif .
+      - name: Upload SARIF to code scanning
+        # Skipped for fork PRs (read-only token) and when the scan wrote no report.
+        if: >-
+          always() && hashFiles('gitleaks.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks
 
   semgrep:
     name: semgrep
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     container:
       image: semgrep/semgrep:1.179.0@sha256:93963d9295a366f59e4850127b1550400ee7b388f04fe144e4a1f6325d96e01b
     steps:
@@ -67,7 +85,23 @@ jobs:
         with:
           persist-credentials: false
       - name: Scan
-        run: semgrep scan --config p/default --error --metrics=off
+        run: semgrep scan --config p/default --error --metrics=off --sarif-output=semgrep.sarif
+      - name: Drop inline-suppressed results
+        # Code scanning ignores SARIF suppressions, so approved inline skips would open alerts.
+        if: always() && hashFiles('semgrep.sarif') != ''
+        run: >-
+          jq '.runs[].results |= ((. // []) | map(select(any(.suppressions[]?; .kind == "inSource") | not)))'
+          semgrep.sarif > semgrep.tmp && mv semgrep.tmp semgrep.upload.sarif
+      - name: Upload SARIF to code scanning
+        # Skipped for fork PRs (read-only token) and when the scan wrote no report.
+        if: >-
+          always() && hashFiles('semgrep.upload.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: semgrep.upload.sarif
+          category: semgrep
 
   pip-audit:
     name: pip-audit
@@ -88,6 +122,9 @@ jobs:
     # Runs on every PR so it can be a required check; the steps no-op until infra/ exists.
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -113,7 +150,25 @@ jobs:
         if: hashFiles('infra/**/*.tf') != ''
       - name: checkov
         if: hashFiles('infra/**/*.tf') != ''
-        run: uvx checkov==3.3.21 --directory infra --framework terraform --compact --quiet
+        run: >-
+          uvx checkov==3.3.21 --directory infra --framework terraform --compact --quiet
+          -o cli -o sarif --output-file-path console,checkov.sarif
+      - name: Drop inline-suppressed results
+        # Code scanning ignores SARIF suppressions, so approved inline skips would open alerts.
+        if: always() && hashFiles('checkov.sarif') != ''
+        run: >-
+          jq '.runs[].results |= ((. // []) | map(select(any(.suppressions[]?; .kind == "inSource") | not)))'
+          checkov.sarif > checkov.tmp && mv checkov.tmp checkov.upload.sarif
+      - name: Upload SARIF to code scanning
+        # Skipped for fork PRs (read-only token) and when the scan wrote no report.
+        if: >-
+          always() && hashFiles('checkov.upload.sarif') != '' &&
+          (github.event_name != 'pull_request' ||
+          github.event.pull_request.head.repo.full_name == github.repository)
+        uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+        with:
+          sarif_file: checkov.upload.sarif
+          category: checkov
 
   e2e:
     name: e2e
