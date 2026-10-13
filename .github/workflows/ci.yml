@@ -86,15 +86,21 @@ jobs:
           persist-credentials: false
       - name: Scan
         run: semgrep scan --config p/default --error --metrics=off --sarif-output=semgrep.sarif
+      - name: Drop inline-suppressed results
+        # Code scanning ignores SARIF suppressions, so approved inline skips would open alerts.
+        if: always() && hashFiles('semgrep.sarif') != ''
+        run: >-
+          jq '.runs[].results |= ((. // []) | map(select(any(.suppressions[]?; .kind == "inSource") | not)))'
+          semgrep.sarif > semgrep.tmp && mv semgrep.tmp semgrep.upload.sarif
       - name: Upload SARIF to code scanning
         # Skipped for fork PRs (read-only token) and when the scan wrote no report.
         if: >-
-          always() && hashFiles('semgrep.sarif') != '' &&
+          always() && hashFiles('semgrep.upload.sarif') != '' &&
           (github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
-          sarif_file: semgrep.sarif
+          sarif_file: semgrep.upload.sarif
           category: semgrep
 
   pip-audit:
@@ -147,15 +153,21 @@ jobs:
         run: >-
           uvx checkov==3.3.21 --directory infra --framework terraform --compact --quiet
           -o cli -o sarif --output-file-path console,checkov.sarif
+      - name: Drop inline-suppressed results
+        # Code scanning ignores SARIF suppressions, so approved inline skips would open alerts.
+        if: always() && hashFiles('checkov.sarif') != ''
+        run: >-
+          jq '.runs[].results |= ((. // []) | map(select(any(.suppressions[]?; .kind == "inSource") | not)))'
+          checkov.sarif > checkov.tmp && mv checkov.tmp checkov.upload.sarif
       - name: Upload SARIF to code scanning
         # Skipped for fork PRs (read-only token) and when the scan wrote no report.
         if: >-
-          always() && hashFiles('checkov.sarif') != '' &&
+          always() && hashFiles('checkov.upload.sarif') != '' &&
           (github.event_name != 'pull_request' ||
           github.event.pull_request.head.repo.full_name == github.repository)
         uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
         with:
-          sarif_file: checkov.sarif
+          sarif_file: checkov.upload.sarif
           category: checkov
 
   e2e:
