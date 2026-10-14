@@ -23,9 +23,34 @@ make package    # Lambda zip at dist/lambda.zip (arm64, Python 3.14, approved sc
 | `rt approve <id> --reviewer "<name>"` | **Owner only.** Validates a draft, sets `status: approved`, `reviewed_by` and `reviewed_on` (today), and moves it from `content/drafts/` to `content/scenarios/`. |
 | `rt retire <id>` | **Owner only.** Sets an approved scenario to `status: retired`. The file stays in `content/scenarios/`, and the build excludes it. |
 | `rt package --out <zip> [--site-packages <dir>]` | Builds the Lambda zip: the installed dependencies plus approved scenarios only (no drafts, no retired). Writes nothing and exits 1 if any approved scenario is invalid. The zip is byte-for-byte reproducible. `make package` runs it with arm64 Python 3.14 wheels and writes `dist/lambda.zip`. |
-| `rt preview [--port 8000]` | Runs the app at `http://127.0.0.1:<port>` with approved scenarios and valid drafts (DRAFT banner), in-memory storage and a random per-run session secret. It always binds to 127.0.0.1; there's no host option. |
+| `rt preview [--port 8000]` | Runs the app at `http://127.0.0.1:<port>` with approved scenarios and valid drafts (labeled "DRAFT — not published."), in-memory storage and a random per-run session secret. It always binds to 127.0.0.1; there's no host option, and it refuses to run inside Lambda. |
+| `rt mcp` | Runs the local authoring MCP server over stdio (PRD R16, R17) with five tools: `get_schema`, `list_scenarios`, `validate_scenario`, `score_answers`, `save_draft`. `save_draft` writes only to `content/drafts/`, always as a draft, and replaces an existing draft only with `overwrite=true`. Nothing approves content. Needs the dev dependencies (`uv sync`). |
 
 Every command takes `--content-dir` (default `content`).
+
+### Authoring with Claude (`rt mcp`)
+
+Check the server in MCP Inspector once, before first use with Claude (R17):
+
+```sh
+npx -y @modelcontextprotocol/inspector@2.9.0 uv run --directory /path/to/risk-trainer rt mcp
+```
+
+To add it to Claude Code or Claude Desktop, use a stdio server entry:
+
+```json
+{
+  "mcpServers": {
+    "risk-trainer-authoring": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--directory", "/path/to/risk-trainer", "rt", "mcp"]
+    }
+  }
+}
+```
+
+`--directory` makes `content/` resolve inside the repo. Pass `--content-dir <path>` after `rt mcp` to use another content root. Approval stays with `rt approve`.
 
 ## Content layout
 

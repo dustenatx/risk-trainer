@@ -47,7 +47,7 @@ def approve(content_dir: Path, scenario_id: str, reviewer: str, today: date) -> 
     _require_valid_text(new_text, target, content_dir)
 
     target.parent.mkdir(exist_ok=True)
-    _atomic_write(target, new_text)
+    atomic_write(target, new_text)
     source.unlink()
     return target
 
@@ -64,7 +64,7 @@ def retire(content_dir: Path, scenario_id: str) -> Path:
         path.read_bytes().decode("utf-8"), {"status": Status.RETIRED.value}
     )
     _require_valid_text(new_text, path, content_dir)
-    _atomic_write(path, new_text)
+    atomic_write(path, new_text)
     return path
 
 
@@ -135,7 +135,7 @@ def _require_valid_text(text: str, path: Path, content_dir: Path) -> None:
         raise ScenarioInvalid(errors)
 
 
-def _atomic_write(path: Path, text: str) -> None:
+def atomic_write(path: Path, text: str) -> None:
     fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     tmp = Path(tmp_name)
     try:

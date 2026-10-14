@@ -14,7 +14,7 @@
     {% for scenario in scenarios %}
     <li class="scenario-card">
       <h3><a href="/s/{{ scenario.id }}">{{ scenario.title }}</a></h3>
-      {% if scenario.status.value == "draft" %}<p class="tag tag-draft">DRAFT</p>{% endif %}
+      {% if scenario.status.value == "draft" %}<p class="tag tag-draft">DRAFT — not published.</p>{% endif %}
       <dl class="meta">
         <div><dt>Difficulty</dt><dd>{{ scenario.difficulty.value | capitalize }}</dd></div>
         <div><dt>Time</dt><dd>About {{ scenario.estimated_minutes }} minutes</dd></div>

@@ -75,6 +75,16 @@ def test_r6_accept_rationale_too_short(length: int) -> None:
     assert messages == ["F5: accepting a risk needs a rationale of at least 10 characters."]
 
 
+def test_r7_web_still_requires_accept_rationale() -> None:
+    """The web path keeps the default; only the authoring server passes require_rationale=False."""
+    items = with_changes(F5__rationale="<drop>")
+    with pytest.raises(SubmissionInvalid):
+        parse_submission(SCENARIO, items)
+    with pytest.raises(SubmissionInvalid):
+        parse_submission(SCENARIO, items, require_rationale=True)
+    parse_submission(SCENARIO, items, require_rationale=False)
+
+
 def test_r6_accept_rationale_whitespace_only_fails() -> None:
     assert errors_for(with_changes(F5__rationale=" " * 20))
 

@@ -41,8 +41,14 @@ class Submission:
         raise KeyError(finding_id)
 
 
-def parse_submission(scenario: Scenario, items: Iterable[tuple[str, str]]) -> Submission:
-    """Build a Submission from form fields. Raises SubmissionInvalid listing every problem."""
+def parse_submission(
+    scenario: Scenario, items: Iterable[tuple[str, str]], *, require_rationale: bool = True
+) -> Submission:
+    """Build a Submission from form fields. Raises SubmissionInvalid listing every problem.
+
+    require_rationale=False skips only the minimum rationale length for `accept`; the authoring
+    server's score_answers (R16) takes no rationale. Every other rule still applies.
+    """
     finding_ids = [finding.id for finding in scenario.findings]
     allowed = {field_name(fid, part) for fid in finding_ids for part in _PARTS} | {NOTE_FIELD}
     errors: list[ContentError] = []
@@ -61,7 +67,7 @@ def parse_submission(scenario: Scenario, items: Iterable[tuple[str, str]]) -> Su
 
     answers: list[Answer] = []
     for fid in finding_ids:
-        answer = _parse_answer(fid, values, errors)
+        answer = _parse_answer(fid, values, errors, require_rationale)
         if answer is not None:
             answers.append(answer)
 
@@ -87,7 +93,9 @@ def parse_submission(scenario: Scenario, items: Iterable[tuple[str, str]]) -> Su
     return Submission(answers=tuple(answers), note=note)
 
 
-def _parse_answer(fid: str, values: dict[str, str], errors: list[ContentError]) -> Answer | None:
+def _parse_answer(
+    fid: str, values: dict[str, str], errors: list[ContentError], require_rationale: bool
+) -> Answer | None:
     raw_treatment = values.get(field_name(fid, "treatment"), "")
     rationale = values.get(field_name(fid, "rationale"), "").strip()
     if not raw_treatment:
@@ -106,7 +114,7 @@ def _parse_answer(fid: str, values: dict[str, str], errors: list[ContentError]) 
             approver = Approver(raw_approver)
         except ValueError:
             errors.append(ContentError(fid, f"{fid}: choose who approves accepting this risk."))
-        if len(rationale) < ACCEPT_RATIONALE_MIN:
+        if require_rationale and len(rationale) < ACCEPT_RATIONALE_MIN:
             errors.append(
                 ContentError(
                     fid,
