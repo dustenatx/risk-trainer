@@ -1,7 +1,7 @@
 @AGENTS.md
 
 ## Claude Code specifics
-- Start each build group in plan mode with the plan prompt from the build guide, and wait for the owner's approval.
+- Start each build group in plan mode with the plan prompt the owner pastes, and wait for the owner's approval.
 - Open pull requests with `gh pr create`, one build group or less per PR.
 
 ## MCP servers and when to use them
