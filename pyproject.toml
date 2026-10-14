@@ -24,6 +24,7 @@ rt = "risk_trainer.cli.main:app"
 dev = [
     "boto3-stubs[dynamodb,ssm]>=1.43.108",
     "httpx>=0.28.1",
+    "mcp>=2.3.0,<3",
     "moto[dynamodb,ssm]>=5.2.3",
     "mypy>=1.18",
     "pip-audit>=2.10",

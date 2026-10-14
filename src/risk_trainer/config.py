@@ -54,6 +54,17 @@ def in_lambda(settings: Settings) -> bool:
     return bool(settings.aws_lambda_function_name)
 
 
+class _LambdaEnvironment(BaseSettings):
+    model_config = SettingsConfigDict(extra="ignore", frozen=True)
+
+    aws_lambda_function_name: str | None = None
+
+
+def running_in_lambda() -> bool:
+    """True inside AWS Lambda, read without building full Settings (used by `rt preview`)."""
+    return bool(_LambdaEnvironment().aws_lambda_function_name)
+
+
 def check_storage(settings: Settings) -> None:
     """Refuse memory storage inside Lambda and a DynamoDB backend without a table."""
     if settings.storage_backend == "memory" and in_lambda(settings):

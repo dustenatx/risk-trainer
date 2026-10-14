@@ -4,8 +4,8 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.8 — 6 Oct 2026 (copy fixes from the live-site review; the About-page MCP statement moved from R10 to R19) |
-| Status | Owner-reviewed and spec-reviewed; groups 5.1–5.2 built; group 5.3 in progress |
+| Version | 1.9 — 14 Oct 2026 (group 5.4 plan: save_draft `overwrite`, list_scenarios shows invalid files, score_answers takes no rationale) |
+| Status | Owner-reviewed and spec-reviewed; groups 5.1–5.3 built; v1 launched 6 Oct 2026; group 5.4 in progress |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
@@ -211,7 +211,8 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - WHEN `save_draft` is called, THEN the server SHALL validate the scenario (R1) and write it only if validation passes.
 - The server SHALL write only under `content/drafts/`, SHALL reject any path that resolves outside it, and SHALL force `status: draft`, `reviewed_by: null` and `reviewed_on: null`.
 - The server SHALL build the file name only from the validated scenario ID (R1 pattern), SHALL refuse to write through or onto a symlink, and SHALL write atomically (a temporary file in the same directory, then a rename).
-- IF a scenario ID already exists in `content/scenarios/`, THEN `save_draft` SHALL refuse and name the conflict.
+- IF a scenario ID already exists in `content/scenarios/`, THEN `save_draft` SHALL refuse and name the conflict, whatever `overwrite` says.
+- IF a draft with the same ID already exists in `content/drafts/`, THEN `save_draft` SHALL refuse unless `overwrite` is true. The tool description SHALL tell the assistant to set `overwrite` only when the owner asks for that draft to be replaced, and the result SHALL say when an existing draft was replaced (`replaced: true`).
 - Tests SHALL call every tool in-process, and the owner SHALL verify the server in MCP Inspector before first use with Claude.
 
 **R18 — Local preview.**
@@ -278,10 +279,10 @@ All tools take and return JSON validated with Pydantic. Errors return `{"error":
 | Tool | Input | Output |
 |---|---|---|
 | `get_schema` | none | JSON Schema of the scenario model, plus the treatment and approver codes with their labels |
-| `list_scenarios` | `status` (optional: draft, approved, retired) | `[{id, version, status, title, difficulty}]` |
+| `list_scenarios` | `status` (optional: draft, approved, retired) | `{scenarios: [{id, version, status, title, difficulty, valid: true}], invalid: [{path, valid: false, error_count}]}`. Files that fail validation are always listed under `invalid`, whatever the filter. |
 | `validate_scenario` | `yaml_text` (≤ 30,000 characters) | `{valid: bool, errors: [{path, message}]}` |
-| `score_answers` | `scenario_id` or `yaml_text`; `answers: [{finding_id, treatment, approver?}]` | `{points, max_points, per_finding: [{finding_id, points, preferred}]}` |
-| `save_draft` | `yaml_text` | `{saved: bool, path, errors: [...]}` (writes only under `content/drafts/`) |
+| `score_answers` | Exactly one of `scenario_id` (a draft or approved scenario) or `yaml_text`; `answers: [{finding_id, treatment, approver?}]`. Same rules as the web exercise (one answer per finding, an approver for `accept`, the remediation-slot limit), except that no rationale is taken. | `{points, max_points, per_finding: [{finding_id, points, preferred}]}` |
+| `save_draft` | `yaml_text`; `overwrite` (optional, default false) | `{saved: bool, path, replaced: bool, errors: [...]}`, plus `message` when a draft was replaced (writes only under `content/drafts/`) |
 
 ### 8.2 Learner server (remote, R19–R20)
 

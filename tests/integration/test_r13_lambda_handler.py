@@ -115,6 +115,10 @@ def test_r12_function_url_event_without_origin_header_gets_403(ssm: Any) -> None
     assert response["body"] == "Forbidden"
 
 
+def test_r18_lambda_handler_never_enables_preview(ssm: Any) -> None:
+    assert build_handler().app.state.preview is False
+
+
 def test_r12_function_url_event_from_cloudfront_is_served(ssm: Any) -> None:
     response = build_handler()(url_event(origin=ORIGIN_VALUE), CONTEXT)
     assert response["statusCode"] == 200

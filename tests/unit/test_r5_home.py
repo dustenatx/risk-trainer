@@ -84,16 +84,16 @@ def test_r5_preview_shows_drafts_with_banner_on_every_draft_page() -> None:
     test_client = client([rt001(status="draft")], preview=True)
     home = test_client.get("/").text
     assert "Local preview" in home
-    assert 'class="tag tag-draft">DRAFT' in home
+    assert 'class="tag tag-draft">DRAFT — not published.' in home
     exercise = test_client.get(f"/s/{RT001_ID}").text
-    assert "<strong>DRAFT</strong>" in exercise
+    assert "<strong>DRAFT — not published.</strong>" in exercise
     from tests.web_helpers import submit
 
-    assert "<strong>DRAFT</strong>" in submit(test_client).text
+    assert "<strong>DRAFT — not published.</strong>" in submit(test_client).text
 
 
 def test_r5_approved_pages_have_no_draft_banner() -> None:
-    assert "<strong>DRAFT</strong>" not in client().get(f"/s/{RT001_ID}").text
+    assert "banner-draft" not in client().get(f"/s/{RT001_ID}").text
 
 
 @pytest.mark.parametrize("host", ["0.0.0.0", "::", "192.168.1.10"])  # noqa: S104

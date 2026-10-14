@@ -1,4 +1,4 @@
-"""The `rt` command line (PRD R2, R3, R5, R14)."""
+"""The `rt` command line (PRD R2, R3, R5, R14, R16, R18)."""
 
 import ipaddress
 import secrets
@@ -8,6 +8,7 @@ from typing import Annotated, NoReturn
 
 import typer
 
+from risk_trainer.config import running_in_lambda
 from risk_trainer.content.lifecycle import approve as approve_scenario
 from risk_trainer.content.lifecycle import retire as retire_scenario
 from risk_trainer.content.packaging import PackagingError, build_zip
@@ -95,6 +96,8 @@ def package(
 
 
 PREVIEW_HOST = "127.0.0.1"
+PREVIEW_IN_LAMBDA = "rt preview is local only; it isn't available in the deployed environment."
+MCP_SDK_MISSING = "rt mcp needs the MCP SDK (a dev dependency). Install it with: uv sync"
 
 
 @app.command()
@@ -103,6 +106,9 @@ def preview(
     content_dir: ContentDir = Path("content"),
 ) -> None:
     """Run the app on 127.0.0.1 with drafts visible. Local use only; there is no host option."""
+    if running_in_lambda():
+        typer.echo(f"Refused: {PREVIEW_IN_LAMBDA}")
+        raise typer.Exit(code=1)
     scenarios, failed = load_previewable(content_dir)
     for report in failed:
         for error in report.errors:
@@ -113,6 +119,8 @@ def preview(
 
 def serve_preview(host: str, port: int, content_dir: Path, scenarios: list[Scenario]) -> None:
     """Serve the preview app. Refuses any address that isn't loopback: drafts are unapproved."""
+    if running_in_lambda():
+        raise ValueError(PREVIEW_IN_LAMBDA)
     if not ipaddress.ip_address(host).is_loopback:
         raise ValueError(f"rt preview only binds to a loopback address, not {host}")
     import uvicorn
@@ -129,6 +137,20 @@ def serve_preview(host: str, port: int, content_dir: Path, scenarios: list[Scena
     )
     web_app = create_app(settings, MemoryAttemptStore(), scenarios, preview=True)
     uvicorn.run(web_app, host=host, port=port, log_config=None)
+
+
+@app.command("mcp")
+def mcp_server(content_dir: ContentDir = Path("content")) -> None:
+    """Run the local authoring MCP server over stdio (R16). It never approves content."""
+    try:
+        from risk_trainer.mcp.authoring import build_server
+    except ModuleNotFoundError as exc:
+        if exc.name is None or exc.name.split(".")[0] != "mcp":
+            raise
+        # stdout is the MCP channel, so the message goes to stderr.
+        typer.echo(MCP_SDK_MISSING, err=True)
+        raise typer.Exit(code=1) from None
+    build_server(content_dir).run("stdio")
 
 
 def _fail(scenario_id: str, exc: LifecycleError | ScenarioInvalid) -> NoReturn:
