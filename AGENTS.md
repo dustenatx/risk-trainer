@@ -21,7 +21,7 @@ Principles: accuracy before volume (only owner-approved content reaches learners
 - Dismiss a security finding from the review agent, CodeQL, Semgrep or CI. List it for the owner instead.
 
 ## Stack (fixed)
-- **Python ≥ 3.12** (newest version Lambda supports as a managed runtime), **uv** with a committed lockfile.
+- **Python 3.14** (newest GA Lambda managed runtime; see `docs/decisions.md`), **uv** with a committed lockfile.
 - **FastAPI** + **Jinja2** server-rendered templates + **htmx 2.x**, vendored. No Node or JavaScript build step and no CDN scripts.
 - **Pydantic v2** (and `pydantic-settings`), **PyYAML** `safe_load` only, **Typer** for the `rt` CLI.
 - **MCP:** the official MCP Python SDK (`mcp` package). Authoring server over stdio; learner server as stateless streamable HTTP with JSON responses.
