@@ -12,7 +12,7 @@ Principles: accuracy before volume (only owner-approved content reaches learners
 - Work in plan mode first. Don't edit files until the owner approves the plan.
 - A change that alters behavior updates the matching PRD acceptance criteria in the same pull request and names the requirement IDs.
 - Record decisions that change the plan in `docs/decisions.md` (date, decision, reason).
-- Before changing files, fetch origin and create a new branch from origin/main; never commit to main.
+- Before changing files, fetch origin and create a new branch from origin/main, unless the owner has said to continue on the current branch; never commit to main.
 - In local sessions: if the working tree has uncommitted changes, or the current branch isn't main and the owner hasn't said to continue on it, stop and ask before doing anything else. The review agent in GitHub Actions is exempt; it only reviews.
 
 ## Human gates: agents never do these
