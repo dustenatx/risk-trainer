@@ -34,13 +34,16 @@
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <input type="hidden" name="submit_id" value="{{ submit_id }}">
 
-  <p id="slot-status" class="slot-status" aria-live="polite">You have {{ slots }} remediation slot{{ "" if slots == 1 else "s" }}.</p>
+  <div class="slot-bar">
+    <span class="slot-pips" aria-hidden="true" hidden>{% for _ in range(slots) %}<span class="pip"></span>{% endfor %}</span>
+    <p id="slot-status" class="slot-status" aria-live="polite">You have {{ slots }} remediation slot{{ "" if slots == 1 else "s" }}.</p>
+  </div>
 
   {% for finding in scenario.findings %}
   {% set fid = finding.id %}
   {% set chosen = values.get(fid ~ ".treatment", "") %}
   <section class="finding" id="finding-{{ fid }}" aria-labelledby="title-{{ fid }}">
-    <h2 id="title-{{ fid }}">{{ fid }}: {{ finding.title }}</h2>
+    <h2 id="title-{{ fid }}" aria-label="{{ fid }}: {{ finding.title }}"><span class="finding-id">{{ fid }}</span> {{ finding.title }}</h2>
     <p>{{ finding.description }}</p>
     <dl class="signals">
       <div><dt>Asset</dt><dd>{{ finding.asset }}</dd></div>

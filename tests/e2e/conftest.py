@@ -7,6 +7,7 @@ from collections.abc import Iterator
 
 import pytest
 import uvicorn
+from fastapi import FastAPI
 
 from risk_trainer.storage.memory import MemoryAttemptStore
 from risk_trainer.web.app import create_app
@@ -25,6 +26,22 @@ def base_url() -> Iterator[str]:
     app = create_app(
         settings(session_cookie_secure=False), MemoryAttemptStore(), [rt001()], preview=False
     )
+    yield from _serve(app)
+
+
+@pytest.fixture(scope="session")
+def preview_base_url() -> Iterator[str]:
+    """Like `rt preview`: rt-001 as a draft, so the R18 banner and draft pill show."""
+    app = create_app(
+        settings(session_cookie_secure=False),
+        MemoryAttemptStore(),
+        [rt001(status="draft")],
+        preview=True,
+    )
+    yield from _serve(app)
+
+
+def _serve(app: FastAPI) -> Iterator[str]:
     port = _free_port()
     server = uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_config=None))
     thread = threading.Thread(target=server.run, daemon=True)

@@ -1,11 +1,11 @@
 """FastAPI app factory (PRD R5-R10, R12, R13, R15)."""
 
+import mimetypes
 from collections.abc import Mapping
 from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
-from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
@@ -17,6 +17,7 @@ from risk_trainer.domain.models import Exposure, Scenario
 from risk_trainer.domain.treatments import APPROVER_LABELS, TREATMENT_LABELS, Approver, Treatment
 from risk_trainer.storage.attempts import AttemptStore
 from risk_trainer.storage.rate_limits import RateLimiter
+from risk_trainer.web.assets import VersionedStaticFiles, asset_version
 from risk_trainer.web.logging import configure_logging
 from risk_trainer.web.metrics import Metrics
 from risk_trainer.web.middleware import (
@@ -28,7 +29,11 @@ from risk_trainer.web.middleware import (
 from risk_trainer.web.routes import exercise, pages
 
 WEB_DIR = Path(__file__).resolve().parent
+STATIC_DIR = WEB_DIR / "static"
 SESSION_COOKIE = "rt_session"
+
+# Python 3.14 already maps .woff2; this keeps it right if the host's mime.types differs.
+mimetypes.add_type("font/woff2", ".woff2")
 
 EXPOSURE_LABELS = {
     Exposure.INTERNET_FACING: "Internet-facing",
@@ -48,9 +53,15 @@ ERROR_TITLES = {
 }
 
 
-def make_templates() -> Jinja2Templates:
+def make_templates(static_version: str | None = None) -> Jinja2Templates:
+    version = static_version if static_version is not None else asset_version(STATIC_DIR)
+
+    def static_url(name: str) -> str:
+        return f"/static/{version}/{name}"
+
     templates = Jinja2Templates(directory=WEB_DIR / "templates")
     templates.env.globals.update(
+        static_url=static_url,
         treatment_labels=TREATMENT_LABELS,
         approver_labels=APPROVER_LABELS,
         exposure_labels=EXPOSURE_LABELS,
@@ -100,7 +111,8 @@ def create_app(
     if session_secret is None:  # check_ready has refused this; narrows the type
         raise ConfigError("the session secret has not been loaded")
     configure_logging(settings.log_level)
-    templates = make_templates()
+    static_version = asset_version(STATIC_DIR)
+    templates = make_templates(static_version)
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     app.state.settings = settings
     app.state.templates = templates
@@ -143,7 +155,11 @@ def create_app(
 
     app.include_router(pages.router)
     app.include_router(exercise.router)
-    app.mount("/static", StaticFiles(directory=WEB_DIR / "static"), name="static")
+    app.mount(
+        "/static",
+        VersionedStaticFiles(directory=STATIC_DIR, version=static_version),
+        name="static",
+    )
 
     # Added innermost first: the last one added runs first.
     app.add_middleware(

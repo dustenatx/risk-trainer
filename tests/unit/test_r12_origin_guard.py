@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 from risk_trainer.config import ConfigError, Settings
 from risk_trainer.web.app import create_app
 from risk_trainer.web.middleware import OriginVerifyMiddleware
-from tests.web_helpers import RT001_ID, client, rt001, settings, submit
+from tests.web_helpers import RT001_ID, client, rt001, settings, static_path, submit
 
 ORIGIN_SECRET = "o" * 64
 
@@ -19,7 +19,7 @@ def guarded() -> TestClient:
     return test_client
 
 
-@pytest.mark.parametrize("path", ["/", f"/s/{RT001_ID}", "/static/app.css", "/no-such-page"])
+@pytest.mark.parametrize("path", ["/", f"/s/{RT001_ID}", static_path("app.css"), "/no-such-page"])
 def test_r12_missing_origin_header_gets_403(path: str) -> None:
     response = client(origin_verify_secret=ORIGIN_SECRET).get(path)
     assert response.status_code == 403
