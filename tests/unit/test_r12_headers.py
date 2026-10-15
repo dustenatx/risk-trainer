@@ -6,7 +6,7 @@ SecurityHeadersPolicy keeps origin values (it overrides only X-Content-Type-Opti
 
 import pytest
 
-from tests.web_helpers import RT001_ID, client, submit
+from tests.web_helpers import RT001_ID, client, static_path, submit
 
 ORIGIN_SECRET = "o" * 64
 
@@ -16,7 +16,7 @@ def header_sets() -> list[tuple[str, dict[str, str]]]:
     responses = [
         ("home", test_client.get("/")),
         ("exercise", test_client.get(f"/s/{RT001_ID}")),
-        ("static", test_client.get("/static/app.css")),
+        ("static", test_client.get(static_path("app.css"))),
         ("not found", test_client.get("/missing")),
         ("result", submit(test_client)),
         ("forbidden POST", test_client.post(f"/s/{RT001_ID}", data={})),

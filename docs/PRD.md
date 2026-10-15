@@ -4,7 +4,7 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.9 — 14 Oct 2026 (group 5.4 plan: save_draft `overwrite`, list_scenarios shows invalid files, score_answers takes no rationale) |
+| Version | 1.10 — 15 Oct 2026 (blueprint theme: contrast in both themes, theme switch, slot bar never hides focus (§6); self-hosted fonts and content-versioned static files (R12)) |
 | Status | Owner-reviewed and spec-reviewed; groups 5.1–5.3 built; v1 launched 6 Oct 2026; group 5.4 in progress |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
@@ -179,6 +179,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - IF the account is not eligible, THEN the system SHALL NOT add a paid standalone WAF; it SHALL rely on application rate limits (R13) and Lambda reserved concurrency.
 - Eligibility for the Free flat-rate plan is confirmed when the owner subscribes the distribution to the Free plan, and the owner records the date in `docs/decisions.md`.
 - The application SHALL send HSTS, a strict Content-Security-Policy (no inline scripts, no third-party script origins), X-Content-Type-Options, Referrer-Policy and frame-ancestors 'none' on every response. CloudFront SHALL attach the AWS-managed SecurityHeadersPolicy as a backstop. (The Free flat-rate plan allows only AWS-managed response-headers policies, and the managed policy keeps the origin's values.)
+- Fonts SHALL be self-hosted; pages SHALL load no third-party font or script origins. Static assets SHALL be served under a content-versioned path with a long-lived immutable cache header, so a deploy isn't served stale from the edge cache.
 - The application origin (a Lambda Function URL) SHALL reject with HTTP 403 every request that does not carry the secret origin header CloudFront adds, before reading the session or the body. The header value SHALL be an SSM SecureString, and the app SHALL refuse to start in Lambda without it.
 
 **R13 — Compute, data and cost ceilings.**
@@ -249,7 +250,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 | Reliability | No runtime dependency on any LLM. The web exercise works whether or not the MCP endpoint exists. |
 | Performance | p95 server time under 500 ms for web routes at demo load (warm). Cold starts of up to about 5 s are acceptable for v1. |
 | Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. The hard ceilings in R13 and R15 cap spend; budget alerts only detect drift. |
-| Accessibility | WCAG 2.2 AA target: labels on all inputs, visible focus, color never the only signal, usable at 360 px. |
+| Accessibility | WCAG 2.2 AA target: labels on all inputs, visible focus, color never the only signal, usable at 360 px. Text contrast at least 4.5:1, and UI component and focus contrast at least 3:1, in both the light and dark themes. The theme follows the device by default; an Auto/Light/Dark switch persists the choice per browser and is hidden without JavaScript. The sticky remediation-slot bar does not hide the focused element (2.4.11). |
 | Maintainability | Python 3.14 (the newest GA Lambda managed runtime as of Oct 2026), fully typed; mypy strict on `risk_trainer/domain` and `risk_trainer/content`; test coverage ≥ 85% on the domain and content packages. |
 | Error handling | Typed domain exceptions; no stack traces shown to users; error pages show a correlation ID that matches the logs. |
 

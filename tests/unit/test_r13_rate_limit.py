@@ -7,7 +7,7 @@ import pytest
 
 from risk_trainer.storage.memory import MemoryAttemptStore
 from risk_trainer.storage.rate_limits import MemoryRateLimiter, RateLimitUnavailable
-from tests.web_helpers import RT001_ID, client, settings, submit
+from tests.web_helpers import RT001_ID, client, settings, static_path, submit
 
 FIXED = datetime(2026, 10, 6, 12, 0, 30, tzinfo=UTC)
 
@@ -53,7 +53,7 @@ def test_r13_limit_is_configurable() -> None:
 def test_r13_gets_are_never_counted() -> None:
     limiter = FrozenLimiter()
     test_client = client(rate_limiter=limiter, requests_per_session_per_minute=1)
-    for path in ["/", f"/s/{RT001_ID}", "/about", "/static/app.css"] * 25:
+    for path in ["/", f"/s/{RT001_ID}", "/about", static_path("app.css")] * 25:
         assert test_client.get(path).status_code == 200
     assert limiter.sessions == []
     assert submit(test_client).status_code == 200

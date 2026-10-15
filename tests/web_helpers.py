@@ -13,10 +13,19 @@ from risk_trainer.domain.rules import parse_scenario
 from risk_trainer.storage.attempts import AttemptStore
 from risk_trainer.storage.memory import MemoryAttemptStore
 from risk_trainer.storage.rate_limits import RateLimiter
-from risk_trainer.web.app import create_app
+from risk_trainer.web.app import STATIC_DIR, create_app
+from risk_trainer.web.assets import asset_version
 from tests.helpers import RT001_DATA, approved
 
 RT001_ID = "rt-001-five-findings"
+STATIC_VERSION = asset_version(STATIC_DIR)
+
+
+def static_path(name: str) -> str:
+    """The versioned URL the app serves a static file at (R12)."""
+    return f"/static/{STATIC_VERSION}/{name}"
+
+
 SECRET = "test-session-secret-" + "x" * 32
 
 # rt-001's expert answers, with the correct approver for the accepted finding.

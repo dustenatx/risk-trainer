@@ -1,4 +1,35 @@
 {% extends "base.html" %}
+{% block masthead %}
+<div class="masthead masthead--full">
+  <div class="masthead-inner">
+    <svg viewBox="0 0 520 170" width="520" class="banner-art" aria-hidden="true" focusable="false">
+<defs>
+<filter id="rt-glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<path d="M222 90 H160 V40 H79" stroke="#2C5A70" stroke-width="2"/>
+<path d="M222 118 H170 V150 H99" stroke="#2C5A70" stroke-width="2"/>
+<path d="M298 120 H380 V125 H471" stroke="#2C5A70" stroke-width="2"/>
+<path d="M222 104 H49" stroke="#4FD6E8" stroke-width="2.5" filter="url(#rt-glow)"/>
+<path d="M298 88 H360 V45 H441" stroke="#4FD6E8" stroke-width="2.5" filter="url(#rt-glow)"/>
+<circle cx="70" cy="40" r="9" stroke="#2C5A70" stroke-width="2"/>
+<circle cx="90" cy="150" r="9" stroke="#2C5A70" stroke-width="2"/>
+<circle cx="480" cy="125" r="9" stroke="#2C5A70" stroke-width="2"/>
+<circle cx="40" cy="104" r="9" stroke="#4FD6E8" stroke-width="2.5" filter="url(#rt-glow)"/>
+<circle cx="40" cy="104" r="3.5" fill="#4FD6E8" stroke="none"/>
+<circle cx="450" cy="45" r="9" stroke="#4FD6E8" stroke-width="2.5" filter="url(#rt-glow)"/>
+<circle cx="450" cy="45" r="3.5" fill="#4FD6E8" stroke="none"/>
+<path d="M238 74 V56 a22 22 0 0 1 44 0 V74" stroke="#4FD6E8" stroke-width="4" filter="url(#rt-glow)"/>
+<rect x="222" y="74" width="76" height="60" rx="10" fill="#0A1F2C" stroke="#4FD6E8" stroke-width="3" filter="url(#rt-glow)"/>
+<circle cx="260" cy="99" r="7" stroke="#4FD6E8" stroke-width="2.5"/>
+<path d="M260 106 V118" stroke="#4FD6E8" stroke-width="3"/>
+</g>
+</svg>
+    <a class="site-name" href="/">Risk Trainer</a>
+    <p class="tagline">Five findings. Two fixes. Your call.</p>
+  </div>
+</div>
+{% endblock %}
 {% block content %}
 <section id="intro" class="intro">
   <h1>You can't fix everything. Decide what to do with each risk.</h1>
@@ -10,16 +41,18 @@
 <section aria-labelledby="scenarios-heading">
   <h2 id="scenarios-heading">Scenarios</h2>
   {% if scenarios %}
+  {% set difficulty_level = {"foundational": 1, "intermediate": 2, "advanced": 3} %}
   <ul class="scenario-list">
     {% for scenario in scenarios %}
     <li class="scenario-card">
       <h3><a href="/s/{{ scenario.id }}">{{ scenario.title }}</a></h3>
       {% if scenario.status.value == "draft" %}<p class="tag tag-draft">DRAFT — not published.</p>{% endif %}
       <dl class="meta">
-        <div><dt>Difficulty</dt><dd>{{ scenario.difficulty.value | capitalize }}</dd></div>
+        <div><dt>Difficulty</dt><dd class="difficulty"><span class="difficulty-pips" aria-hidden="true">{% for _ in range(difficulty_level[scenario.difficulty.value]) %}<span class="difficulty-pip"></span>{% endfor %}</span>{{ scenario.difficulty.value | capitalize }}</dd></div>
         <div><dt>Time</dt><dd>About {{ scenario.estimated_minutes }} minutes</dd></div>
         <div><dt>CISSP domains</dt><dd>{% for d in scenario.cissp_domains %}<span class="tag">Domain {{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</dd></div>
       </dl>
+      <a class="button" href="/s/{{ scenario.id }}">Start scenario<span class="visually-hidden">: {{ scenario.title }}</span></a>
     </li>
     {% endfor %}
   </ul>

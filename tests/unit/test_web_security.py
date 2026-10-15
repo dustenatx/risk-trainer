@@ -37,7 +37,7 @@ def test_templates_have_no_inline_script_handlers_or_styles(template: Path) -> N
     assert not re.search(r"<style", text, re.IGNORECASE)
     assert "|safe" not in text.replace(" ", "")
     for src in re.findall(r'src="([^"]+)"', text, re.IGNORECASE):
-        assert src.startswith("/static/")
+        assert re.fullmatch(r"\{\{ static_url\('[\w.-]+'\) \}\}", src), src
 
 
 def test_jinja_autoescape_is_on() -> None:

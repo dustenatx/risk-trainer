@@ -1,6 +1,7 @@
 // Risk Trainer form helpers (PRD R6). The server re-checks every rule (R7).
 // - Disables further "remediate" choices once the remediation slots are used, and says why.
 // - Shows the approver field and requires a rationale when a finding is accepted.
+// - Fills the slot pips and keeps the sticky slot bar from hiding the focused field.
 (function () {
   "use strict";
 
@@ -25,6 +26,14 @@
       status.textContent = full
         ? "All " + plural(slots, "remediation slot") + " are used, so remediate is disabled for the other findings. Change one of your remediate choices to free a slot."
         : "You have used " + used + " of " + plural(slots, "remediation slot") + ".";
+    }
+
+    var pips = form.querySelector(".slot-pips");
+    if (pips) {
+      pips.hidden = false;
+      pips.querySelectorAll(".pip").forEach(function (pip, index) {
+        pip.classList.toggle("is-filled", index < used);
+      });
     }
 
     form.querySelectorAll("section.finding").forEach(function (section) {
@@ -55,7 +64,17 @@
         update(form);
       });
       update(form);
+      trackBarHeight(form.querySelector(".slot-bar"));
     });
+  }
+
+  // The slot bar is sticky. Its height feeds scroll-padding-top, so a focused field is never
+  // scrolled under it (WCAG 2.4.11). The text wraps at phone width, so the height is measured.
+  function trackBarHeight(bar) {
+    if (!bar || !("ResizeObserver" in window)) return;
+    new ResizeObserver(function () {
+      document.documentElement.style.setProperty("--slot-bar-h", bar.offsetHeight + "px");
+    }).observe(bar);
   }
 
   document.addEventListener("DOMContentLoaded", function () {
