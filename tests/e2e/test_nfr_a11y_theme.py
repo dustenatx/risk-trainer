@@ -4,7 +4,7 @@ fallbacks, the slot pips, the selected-row style, and focus never hidden by the 
 import pytest
 from playwright.sync_api import Browser, Page, expect
 
-from tests.web_helpers import RT001_ID
+from tests.web_helpers import RT001_ID, rt001
 
 pytestmark = pytest.mark.e2e
 
@@ -175,6 +175,61 @@ def test_nfr_a11y_focus_not_obscured(browser: Browser, base_url: str, width: int
         assert state["barTop"] == 0, state  # the bar is stuck to the top
         assert state["top"] >= state["barBottom"], state
         assert state["bottom"] <= state["height"], state
+    context.close()
+
+
+def chromium_names(page: Page) -> list[str]:
+    """Heading and link names from Chromium's own accessibility tree (not Playwright's)."""
+    session = page.context.new_cdp_session(page)
+    tree = session.send("Accessibility.getFullAXTree")
+    session.detach()
+    names = []
+    for node in tree["nodes"]:
+        role = node.get("role", {}).get("value")
+        name = node.get("name", {}).get("value")
+        if role in ("heading", "link") and name:
+            names.append(str(name))
+    return names
+
+
+def test_nfr_a11y_accessible_names(page: Page, base_url: str) -> None:
+    """WCAG 2.5.3: each name starts with the visible text, with no stray space before ':'."""
+    scenario = rt001()
+    page.goto(base_url + "/")
+    expect(
+        page.get_by_role("link", name=f"Start scenario: {scenario.title}", exact=True)
+    ).to_be_visible()
+    home_names = chromium_names(page)
+    assert f"Start scenario: {scenario.title}" in home_names
+
+    page.goto(f"{base_url}/s/{RT001_ID}")
+    for finding in scenario.findings:
+        expect(
+            page.get_by_role("heading", name=f"{finding.id}: {finding.title}", exact=True)
+        ).to_be_visible()
+    exercise_names = chromium_names(page)
+    for finding in scenario.findings:
+        assert f"{finding.id}: {finding.title}" in exercise_names
+    for name in home_names + exercise_names:
+        assert " :" not in name, name
+
+
+@pytest.mark.parametrize("width", [1280, 390])
+@pytest.mark.parametrize("scheme", ["light", "dark"])
+def test_r18_draft_pill_sits_under_the_title(
+    browser: Browser, preview_base_url: str, width: int, scheme: str
+) -> None:
+    context = browser.new_context(viewport={"width": width, "height": 844}, color_scheme=scheme)
+    page = context.new_page()
+    page.goto(preview_base_url + "/")
+    gap = page.evaluate(
+        """() => {
+            const pill = document.querySelector('.scenario-card > .tag-draft');
+            const title = pill.closest('.scenario-card').querySelector('h3');
+            return pill.getBoundingClientRect().top - title.getBoundingClientRect().bottom;
+        }"""
+    )
+    assert 0 <= gap <= 12, gap
     context.close()
 
 

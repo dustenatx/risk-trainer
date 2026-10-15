@@ -52,7 +52,7 @@
         <div><dt>Time</dt><dd>About {{ scenario.estimated_minutes }} minutes</dd></div>
         <div><dt>CISSP domains</dt><dd>{% for d in scenario.cissp_domains %}<span class="tag">Domain {{ d }}</span>{% if not loop.last %} {% endif %}{% endfor %}</dd></div>
       </dl>
-      <a class="button" href="/s/{{ scenario.id }}">Start scenario<span class="visually-hidden">: {{ scenario.title }}</span></a>
+      <a class="button" href="/s/{{ scenario.id }}" aria-label="Start scenario: {{ scenario.title }}">Start scenario</a>
     </li>
     {% endfor %}
   </ul>
