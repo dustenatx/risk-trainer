@@ -5,7 +5,7 @@
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
 | Version | 1.11 — 20 Oct 2026 (read-only smoke checks run against the deployed URL after every apply and confirm the live static version matches the commit; they never submit a form (R14, §9)) |
-| Status | Groups 5.1–5.4 built; v1 launched 6 Oct 2026; v1.1 in progress (authoring MCP server merged 14 Oct; two scenarios drafted through it still to come); read-only smoke checks run after each deploy. |
+| Status | Owner-reviewed and spec-reviewed; groups 5.1–5.4 built; v1 launched 6 Oct 2026; v1.1 in progress (authoring MCP server merged 14 Oct; two scenarios drafted through it still to come); read-only smoke checks run after each deploy. |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
