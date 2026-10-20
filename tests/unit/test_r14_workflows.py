@@ -11,6 +11,7 @@ from tests.helpers import REPO_ROOT
 
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
 DEPLOY = WORKFLOWS / "deploy.yml"
+TERRAFORM_JOBS = ("plan", "apply")
 
 
 def load(path: Path) -> dict[Any, Any]:
@@ -44,7 +45,8 @@ def test_r14_oidc_only_no_long_lived_keys() -> None:
         assert forbidden not in text
     workflow = load(DEPLOY)
     assert workflow["permissions"] == {"contents": "read"}
-    for job in workflow["jobs"].values():
+    for name in TERRAFORM_JOBS:
+        job = workflow["jobs"][name]
         assert job["permissions"] == {"contents": "read", "id-token": "write"}
         creds = [s for s in steps(job) if "configure-aws-credentials" in s.get("uses", "")]
         assert len(creds) == 1
@@ -70,11 +72,37 @@ def test_r14_apply_waits_for_the_protected_prod_environment() -> None:
 
 
 def test_r14_both_jobs_build_the_package_before_terraform() -> None:
-    for job in load(DEPLOY)["jobs"].values():
+    for name in TERRAFORM_JOBS:
+        job = load(DEPLOY)["jobs"][name]
         runs = [s.get("run", "") for s in steps(job)]
         package = next(i for i, r in enumerate(runs) if r == "make package")
         terraform = next(i for i, r in enumerate(runs) if "terraform" in r)
         assert package < terraform
+
+
+def test_r14_deploy_has_exactly_plan_apply_and_smoke() -> None:
+    assert set(load(DEPLOY)["jobs"]) == {*TERRAFORM_JOBS, "smoke"}
+
+
+def test_r14_smoke_runs_after_apply_read_only() -> None:
+    smoke = load(DEPLOY)["jobs"]["smoke"]
+    assert smoke["needs"] == "apply"
+    assert smoke["permissions"] == {"contents": "read"}
+    assert "environment" not in smoke
+    assert smoke["runs-on"] == "ubuntu-24.04"
+    assert smoke["timeout-minutes"] <= 15
+    assert smoke["env"] == {"SMOKE_BASE_URL": "${{ vars.SMOKE_BASE_URL }}"}
+    assert "secrets." not in yaml.safe_dump(smoke)
+    assert not [s for s in steps(smoke) if "configure-aws-credentials" in s.get("uses", "")]
+    runs = [s.get("run", "") for s in steps(smoke)]
+    guard = next(i for i, r in enumerate(runs) if '-z "$SMOKE_BASE_URL"' in r)
+    assert guard < runs.index("make smoke")
+
+
+def test_r14_smoke_checkout_includes_static_files() -> None:
+    smoke = load(DEPLOY)["jobs"]["smoke"]
+    (checkout,) = [s for s in steps(smoke) if "checkout" in s.get("uses", "")]
+    assert set(checkout.get("with", {})) <= {"persist-credentials"}
 
 
 def test_r14_no_template_expressions_inside_run_scripts() -> None:

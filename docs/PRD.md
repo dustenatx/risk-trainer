@@ -4,8 +4,8 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.10 — 15 Oct 2026 (blueprint theme: contrast in both themes, theme switch, slot bar never hides focus (§6); self-hosted fonts and content-versioned static files (R12)) |
-| Status | Owner-reviewed and spec-reviewed; groups 5.1–5.3 built; v1 launched 6 Oct 2026; group 5.4 in progress |
+| Version | 1.11 — 20 Oct 2026 (read-only smoke checks run against the deployed URL after every apply and confirm the live static version matches the commit; they never submit a form (R14, §9)) |
+| Status | Groups 5.1–5.4 built; v1 launched 6 Oct 2026; v1.1 in progress (authoring MCP server merged 14 Oct; two scenarios drafted through it still to come); read-only smoke checks run after each deploy. |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
 
@@ -192,6 +192,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 **R14 — CI/CD.**
 - Deployments SHALL use GitHub Actions with OIDC federation to AWS; no long-lived AWS keys.
 - WHEN a change merges to `main`, THEN CI SHALL produce a Terraform plan, and apply SHALL wait for manual approval through a protected GitHub environment.
+- WHEN apply succeeds, THEN CI SHALL run read-only smoke checks (GET only) against the deployed URL, with no AWS credentials or secrets: security headers, a scenario page with five findings, and the stylesheet served `immutable` under the commit's static asset version. They SHALL NOT submit a form or record an attempt.
 - The build SHALL package only `approved` scenarios (`rt package`). IF any approved scenario fails validation, THEN the build SHALL fail and write no package. The same inputs SHALL produce a byte-identical package.
 
 **R15 — Observability and cost.**
@@ -299,7 +300,7 @@ All tools take and return JSON validated with Pydantic. Errors return `{"error":
 1. At least 5 approved scenarios (2 foundational, 2 intermediate, 1 advanced). Across them, each of the four responses is the preferred answer for at least one finding, and each scenario is fact-checked with sources listed in its approval pull request.
 2. All CI checks green; coverage targets met; every review conversation resolved on every merged pull request (the branch ruleset enforces this).
 3. Deployed through the approved pipeline; edge protection, headers, alarms and the budget have been checked by hand.
-4. Playwright smoke test passes against the deployed URL: complete a scenario, see the score and the debrief.
+4. The read-only smoke checks (R14) pass against the deployed URL after each apply. Completing a scenario and seeing the score and debrief is covered by the local Playwright suite, so production peer counts hold only learner attempts.
 5. The owner has completed every scenario on a phone.
 
 v1 launches after groups 5.1–5.3. The scenarios may be drafted in a Claude chat.
