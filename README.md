@@ -52,6 +52,28 @@ To add it to Claude Code or Claude Desktop, use a stdio server entry:
 
 `--directory` makes `content/` resolve inside the repo. Pass `--content-dir <path>` after `rt mcp` to use another content root. Approval stays with `rt approve`.
 
+### Authoring a new scenario
+
+1. **Connect `rt mcp` to Claude Code** (once). Local scope keeps the entry in your own config, out of the shared `.mcp.json`:
+
+   ```sh
+   claude mcp add --scope local risk-trainer-authoring -- uv run --directory /path/to/risk-trainer rt mcp
+   ```
+
+   Run `/mcp` in Claude Code to check that it's connected.
+2. **Draft with Claude** using the five tools:
+   - `get_schema`: the scenario model and the treatment and approver codes.
+   - `list_scenarios`: existing IDs and coverage, so the new one doesn't clash or repeat.
+   - `validate_scenario`: run it until the draft has no errors.
+   - `score_answers`: check that the answer key scores the intended answers and that the slot limit forces a trade-off.
+   - `save_draft`: writes `content/drafts/<id>.yaml`. Tell Claude to use `overwrite` only when you want that draft replaced.
+3. **Check it in `rt preview`.** Run `uv run rt preview`, work through the draft at `http://127.0.0.1:8000` (it's labeled "DRAFT — not published."), and check it at phone width.
+4. **Fact-check it.** Ask Claude to fill in [`docs/fact-check-prompt.md`](docs/fact-check-prompt.md) for the draft, and paste the result into Perplexity yourself. Triage each flagged claim: accept and reword, or reject with a reason. Revise the draft and run `validate_scenario` again.
+5. **Open a save PR** with only the draft file. The PR body holds the filled fact-check prompt, the key findings with their source links, and your triage.
+6. **Approve in a separate PR.** After the save PR merges, run `rt approve <id> --reviewer "<name>"` on a new branch and open a PR that lists the fact-check sources (PRD §9) and links the save PR.
+
+Claude prepares the fact-check prompt but never calls Perplexity. Nothing approves content except `rt approve`, and only the owner runs it.
+
 ## Content layout
 
 - `content/drafts/`: drafts only (`status: draft`, review fields null). Never deployed.
