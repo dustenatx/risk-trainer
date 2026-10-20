@@ -1,15 +1,19 @@
-"""Launch smoke test against the deployed app (PRD §9 item 4; R12).
+"""Read-only smoke checks against the deployed app (PRD §9 item 4; R9, R12, R14).
 
-Opt-in: runs only with `make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net`.
-Completing a scenario records one real attempt in the peer counts.
+Runs with `make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net`, and in the deploy
+workflow's `smoke` job after every apply. GET only: nothing here submits a form or records an
+attempt (a unit test enforces it).
 """
 
 import os
+from collections.abc import Iterator
 
+import httpx
 import pytest
-from playwright.sync_api import Page, expect
 
-from tests.e2e.flows import answer_all_transfer
+from risk_trainer.web.app import STATIC_DIR
+from risk_trainer.web.assets import asset_version
+from tests.e2e.smoke_http import FINDINGS_PER_SCENARIO, parse_page, read_only_client
 
 pytestmark = pytest.mark.smoke
 
@@ -23,28 +27,45 @@ def deployed_url() -> str:
     return url
 
 
-def test_smoke_security_headers(page: Page, deployed_url: str) -> None:
-    response = page.goto(f"{deployed_url}/")
-    assert response is not None and response.status == 200
-    headers = response.all_headers()
-    assert headers["strict-transport-security"].startswith("max-age=")
-    assert "frame-ancestors 'none'" in headers["content-security-policy"]
-    assert headers["x-content-type-options"] == "nosniff"
+@pytest.fixture(scope="session")
+def client(deployed_url: str) -> Iterator[httpx.Client]:
+    with read_only_client(deployed_url) as http:
+        yield http
 
 
-def test_smoke_http_redirects_to_https(page: Page, deployed_url: str) -> None:
-    response = page.request.get(
-        deployed_url.replace("https://", "http://", 1) + "/", max_redirects=0
-    )
-    assert response.status in (301, 302, 307, 308)
+@pytest.fixture(scope="session")
+def home(client: httpx.Client) -> httpx.Response:
+    return client.get("/")
+
+
+def test_smoke_home_security_headers(home: httpx.Response) -> None:
+    assert home.status_code == 200
+    assert home.headers["strict-transport-security"].startswith("max-age=")
+    assert "frame-ancestors 'none'" in home.headers["content-security-policy"]
+    assert home.headers["x-frame-options"] == "DENY"
+    assert home.headers["x-content-type-options"] == "nosniff"
+
+
+def test_smoke_http_redirects_to_https(client: httpx.Client, deployed_url: str) -> None:
+    response = client.get(deployed_url.replace("https://", "http://", 1) + "/")
+    assert response.status_code in (301, 302, 307, 308)
     assert response.headers["location"].startswith("https://")
 
 
-def test_smoke_complete_a_scenario(page: Page, deployed_url: str) -> None:
-    page.goto(f"{deployed_url}/")
-    page.locator('a[href^="/s/"]').first.click()
-    answer_all_transfer(page)
-    page.get_by_role("button", name="Submit my answers").click()
-    expect(page.locator("#score")).to_contain_text("points")
-    expect(page.locator("section.finding-debrief").first).to_be_visible()
-    expect(page.locator("#overall-heading")).to_be_visible()
+def test_smoke_scenario_page_shows_five_findings(
+    client: httpx.Client, home: httpx.Response
+) -> None:
+    scenario_hrefs = parse_page(home.text).scenario_hrefs
+    assert scenario_hrefs, "the home page lists no scenarios"
+    response = client.get(scenario_hrefs[0])
+    assert response.status_code == 200
+    assert parse_page(response.text).findings == FINDINGS_PER_SCENARIO
+
+
+def test_smoke_stylesheet_is_immutable(client: httpx.Client, home: httpx.Response) -> None:
+    (href,) = parse_page(home.text).stylesheet_hrefs
+    # The version hashes this checkout's static/ folder, so a match means this commit is live.
+    assert f"/static/{asset_version(STATIC_DIR)}/" in href, href
+    response = client.get(href)
+    assert response.status_code == 200
+    assert "immutable" in response.headers["cache-control"]

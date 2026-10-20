@@ -18,7 +18,8 @@ validate:
 e2e:
 	uv run pytest -m e2e tests/e2e
 
-# Against the deployed app (PRD §9 item 4): make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net
+# Read-only (GET only) checks against the deployed app (PRD §9 item 4; R14). Runs after every apply;
+# by hand: make smoke SMOKE_BASE_URL=https://<distribution>.cloudfront.net
 smoke:
 	SMOKE_BASE_URL="$(SMOKE_BASE_URL)" uv run pytest -m smoke tests/e2e
 

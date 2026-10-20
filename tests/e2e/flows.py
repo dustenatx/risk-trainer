@@ -1,4 +1,4 @@
-"""Browser steps shared by the local e2e tests and the deployed smoke test."""
+"""Browser steps shared by the local e2e tests."""
 
 from playwright.sync_api import Page, expect
 

@@ -1,7 +1,8 @@
 name: Deploy
 
 # R14: a merge to main produces a Terraform plan; apply waits for the owner's approval in the
-# protected prod environment. OIDC only; no long-lived AWS keys.
+# protected prod environment. OIDC only; no long-lived AWS keys. After a successful apply, the
+# smoke job runs read-only (GET only) checks against the deployed URL.
 #
 # The repository is public, so logs and job summaries are public: the plan is shown only as
 # `terraform show -no-color` (sensitive values redacted), never as JSON, and no plan file is
@@ -125,3 +126,29 @@ jobs:
           terraform -chdir="$TF_DIR" apply -input=false -lock-timeout=5m tfplan
       - name: Outputs
         run: terraform -chdir="$TF_DIR" output
+
+  smoke:
+    name: smoke
+    needs: apply
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    # Read-only checks against the deployed app: GET only, so nothing is recorded (R9).
+    # No environment, no OIDC role and no secrets. The full checkout includes static/, so the
+    # stylesheet check can confirm the live asset version matches this commit.
+    permissions:
+      contents: read
+    env:
+      SMOKE_BASE_URL: ${{ vars.SMOKE_BASE_URL }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - name: Require the base URL
+        # Without it every smoke test skips and the job would pass with nothing checked.
+        run: |
+          if [ -z "$SMOKE_BASE_URL" ]; then echo "The SMOKE_BASE_URL repository variable is not set."; exit 1; fi
+      - name: Install
+        run: uv sync --locked
+      - name: Smoke checks (GET only)
+        run: make smoke
