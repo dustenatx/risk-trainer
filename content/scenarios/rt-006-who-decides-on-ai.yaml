@@ -1,6 +1,6 @@
 id: rt-006-who-decides-on-ai
 version: 1
-status: draft
+status: approved
 title: "Who decides on AI"
 difficulty: advanced
 estimated_minutes: 15
@@ -257,5 +257,5 @@ answer_key:
     accepts risk within it. Security assesses and advises. For AI use, the data owner
     decides whether data may go into a tool and under what rules. The custodian, here
     State IT, implements and runs the controls that enforce those rules.
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-20
