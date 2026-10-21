@@ -1,0 +1,261 @@
+id: rt-006-who-decides-on-ai
+version: 1
+status: draft
+title: "Who decides on AI"
+difficulty: advanced
+estimated_minutes: 15
+cissp_domains: [1, 2]
+learning_objectives:
+  - "Identify who can accept the risk of an AI use: senior management sets the appetite, and the owner of the data or process, or management with delegated authority, accepts within it. Security assesses and advises."
+  - "Distinguish the data owner, who decides how data may be used, from the custodian, who runs the tools and controls."
+  - "Recognize that blocking a useful tool without an approved alternative can push use to personal phones, where it's harder to see, instead of reducing the risk."
+  - "Keep a person accountable for decisions that AI informs."
+
+context:
+  organization: "Redfern State Department of Professional Licensing (fictional)"
+  industry: "State government: issues and disciplines professional licenses"
+  size: "About 450 staff; State IT runs the department's systems; a three-person security office"
+  risk_appetite: "Low tolerance for exposure of nonpublic applicant personal data; moderate tolerance for slower administrative work."
+  constraints:
+    - "The Deputy Director of Licensing owns applicant records and decides how they may be used."
+    - "State IT is the custodian: it runs the department's systems, web filtering and the state-contracted enterprise AI workspace."
+    - "The state already contracts for an enterprise AI workspace that doesn't train on inputs and has logging and retention controls. The department hasn't turned it on."
+    - "Under department policy the security office advises on risk but can't accept it; the data owner or the Agency Director does."
+    - "The security office has proposed blocking all AI tools and says it will sign off on the result."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Licensing staff paste applicant records into a free public AI chatbot"
+    description: >-
+      Web filter logs show about 300 sessions a week from licensing staff to a free
+      public AI chatbot. Staff say they paste in case files, including applicant
+      names, license numbers and background-check details, to get summaries. The free
+      service's terms let it keep inputs and use them to improve its models. State IT
+      can turn on the state-contracted enterprise AI workspace for licensing staff in
+      about two weeks and then block the public site.
+    asset: "Applicant case files"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Applicant personal data, including background-check results"
+      compensating_controls_available:
+        - "Block the public chatbot at the web filter"
+        - "Remind staff of the data-handling policy"
+      remediation_effort: medium
+      business_owner: "Deputy Director of Licensing"
+
+  - id: F2
+    title: "AI notetaker extension records closed disciplinary hearings"
+    description: >-
+      Some hearing officers installed a free AI notetaker browser extension. It
+      records closed disciplinary hearings held over video and stores the audio and
+      transcripts in its vendor's cloud. The department has no contract with that
+      vendor. A stenographer already produces the official record of every hearing.
+      The hearing officers say the extension's summaries save them about 20 minutes
+      per hearing.
+    asset: "Closed disciplinary hearings"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Testimony and personal details from closed disciplinary hearings"
+      compensating_controls_available:
+        - "Limit which browser extensions staff can install"
+      remediation_effort: low
+      business_owner: "Deputy Director of Licensing"
+
+  - id: F3
+    title: "Communications drafts press releases with a public AI tool"
+    description: >-
+      The communications team uses a free public AI tool to draft press releases and
+      social media posts. It works only from information the department has already
+      published, such as board meeting results and public disciplinary orders. No
+      written rule says what staff may enter. The Communications Director wants the
+      team to keep using it.
+    asset: "Press release drafting"
+    exposure: process
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Information the department has already made public"
+      compensating_controls_available:
+        - "Written rule: no nonpublic data in public AI tools"
+        - "A person reviews every draft before release"
+      remediation_effort: low
+      business_owner: "Communications Director"
+
+  - id: F4
+    title: "Case-management vendor turned on an AI assistant by default"
+    description: >-
+      The department's case-management software-as-a-service vendor released an AI
+      assistant and turned it on for all customers. It sends case notes to a
+      sub-processor to generate summaries. The contract predates the feature and says
+      nothing about AI, training on customer data, sub-processors or breach
+      notification for them. The vendor has offered to negotiate an amendment, and an
+      admin setting turns the assistant off.
+    asset: "Case-management system"
+    exposure: third_party
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Case notes on applicants and licensees"
+      compensating_controls_available:
+        - "Turn the AI assistant off until the contract is amended"
+      remediation_effort: medium
+      business_owner: "Deputy Director of Licensing"
+
+  - id: F5
+    title: "Supervisor's spreadsheet uses AI to flag applicants for denial"
+    description: >-
+      A licensing supervisor built a spreadsheet that sends applicant data to a
+      commercial AI service using a key on their personal account. The AI flags
+      applications it rates as likely to be denied, and staff have started treating
+      the flags as decisions. There's no documented human review. Nobody at the
+      department knows the service's retention terms. Once the enterprise workspace
+      from F1 is running, moving the spreadsheet into it takes about a week.
+    asset: "Applicant screening spreadsheet"
+    exposure: process
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Applicant personal data and application history"
+      compensating_controls_available:
+        - "Require a documented human review of every flag before any action"
+      remediation_effort: medium
+      business_owner: "Deputy Director of Licensing"
+
+answer_key:
+  findings:
+    F1:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, avoid]
+      key_considerations:
+        - "About 300 sessions a week of applicant data going to a service that can keep it is the largest exposure here."
+        - "The order matters: turn on the approved workspace first, then block the public site."
+        - "Blocking with no approved alternative can push use to personal phones, where it's harder to see."
+        - "F5 needs this workspace before it has an approved place to move."
+      expert_rationale: >-
+        This is the biggest exposure here: about 300 sessions a week of applicant
+        records going to a service that can keep them. Spend a slot. State IT turns on
+        the enterprise workspace first, then blocks the public site. Order matters.
+        Block first with nothing to replace it, and staff who rely on those summaries
+        may move to personal phones, where it's harder to see. The Deputy Director owns
+        these records and sets the rules for using them; State IT runs the tools.
+      why_not:
+        avoid: "Blocking the site stops the use you can see, but with no approved alternative staff may move to personal phones, where it's harder to see."
+        mitigate_compensate: "A policy reminder doesn't change what the public service keeps, and 300 sessions a week shows the need is real."
+        transfer: "With no contract with the free service, there's no ready way to shift the loss to it."
+        accept: "Nonpublic applicant data going to a service that can keep it falls outside a low risk appetite."
+
+    F2:
+      preferred: avoid
+      acceptable: [avoid]
+      key_considerations:
+        - "The stenographer's record already exists, so the extension adds a second copy, not a capability."
+        - "Closed hearing testimony is nonpublic personal data, held by a vendor with no contract."
+        - "Stopping the activity takes no remediation slot."
+      expert_rationale: >-
+        Ask what the extension adds. The stenographer already produces the official
+        record. The extension adds a second copy of closed testimony, held by a vendor
+        the department has no contract with. Twenty minutes saved per hearing doesn't
+        outweigh that. Stop the activity: remove the extension and have State IT limit
+        which extensions staff can install. That's avoid, and it doesn't need a slot.
+        If hearing officers want summaries, they can come from the official record
+        through the approved workspace.
+      why_not:
+        mitigate_remediate: "There's nothing to fix in place; the record the extension duplicates already exists."
+        mitigate_compensate: "Tighter extension settings still leave closed testimony with a vendor the department has no contract with."
+        transfer: "There's no contract to put terms in, and the official record makes the extension unnecessary."
+        accept: "Closed hearing testimony is nonpublic personal data, outside a low risk appetite, and the activity adds little."
+
+    F3:
+      preferred: accept
+      acceptable: [accept]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "The team works only from published information, so the exposure is low."
+        - "The gap is the missing written rule on what may be entered, not the tool itself."
+        - "The Communications Director owns this process and can accept the risk; the security office can only recommend."
+      expert_rationale: >-
+        Not every AI use is a data risk. This team works from information the
+        department has already published, so the exposure is low. The real gap is that
+        nothing written says what may go in. Recommend that the Communications Director
+        accept the risk in writing, with a rule: no nonpublic data in public AI tools,
+        and a person reviews every draft before release. The Communications Director
+        owns this process. The security office can recommend; it can't sign the
+        acceptance.
+      why_not:
+        avoid: "Blocking low-risk use of public information costs the team time for little protection, and it teaches staff that asking gets a no."
+        mitigate_remediate: "Moving this team to the enterprise workspace would spend effort on the lowest-risk use in the scenario."
+        mitigate_compensate: "The written rule and review are conditions of the acceptance; the decision that matters is the owner's sign-off."
+        transfer: "Public inputs keep confidentiality exposure low; the remaining risk, such as an inaccurate release, is reputational and is handled by review, not a contract."
+
+    F4:
+      preferred: transfer
+      acceptable: [transfer, avoid]
+      key_considerations:
+        - "The vendor changed what happens to case notes; the contract predates the feature and doesn't cover it."
+        - "An amendment can cover no training, sub-processor disclosure, breach notification and liability."
+        - "Liability terms can shift covered losses, and the other terms reduce the risk. The agency still answers to applicants and oversight bodies if case notes leak."
+      expert_rationale: >-
+        The vendor changed what happens to case notes without asking, and the contract
+        doesn't cover it. Turn the assistant off now, while you negotiate the amendment
+        the vendor has offered, and back on only under the new terms. Liability terms
+        can shift covered losses to the vendor. Terms for no training on department
+        data, sub-processor disclosure and breach notification reduce the risk. The
+        agency still answers to applicants and oversight bodies if case notes leak.
+      why_not:
+        avoid: "Turning it off is the right interim step, but on its own it leaves the contract gap open for the vendor's next feature."
+        mitigate_remediate: "The department can't change the vendor's product; it can change the contract."
+        mitigate_compensate: "No department control reaches an unseen sub-processor; the contract is the lever, and limits on what data is sent still matter."
+        accept: "Case notes going to an undisclosed sub-processor with no AI terms falls outside a low risk appetite."
+
+    F5:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "Two problems: applicant data leaving on a personal key, and AI flags treated as decisions."
+        - "F1's workspace is the only approved place to move it, so F1 comes first."
+        - "AI can inform a licensing decision; a person makes it and records why."
+      expert_rationale: >-
+        Two problems here: applicant data going out on a personal key, and an AI flag
+        treated as a decision. Spend the second slot moving the spreadsheet into F1's
+        workspace, with a mandatory human review of every flag. Without F1 there's no
+        approved place to move it, which is why F1 comes first. Until then, stop the
+        personal-key calls and have staff review applications without the flags. AI
+        can inform a licensing decision; a person makes it and records why. The Deputy
+        Director owns that decision process.
+      why_not:
+        mitigate_compensate: "Human review now reduces the decision risk, but applicant data still leaves on a personal key."
+        avoid: "Stopping the personal-key calls is the right interim step, but shutting the tool down for good leaves the screening need with no approved place to go."
+        transfer: "There's no contract with the service on a personal key to put terms in."
+        accept: "Unreviewed AI flags that affect applicants' livelihoods, sent on a personal key, fall outside a low risk appetite."
+
+  overall_debrief: >-
+    Every finding involves AI, but the risks differ. F1 and F5 are linked: F1's
+    enterprise workspace gives F5 an approved place to go, so the slots go to both, in
+    that order. F2 adds little over the official record, so stop it. F3 uses only
+    public information, so its owner accepts it with a written rule. F4 is a vendor
+    gap the contract can address, and accountability stays with the agency. The
+    security office's offer to block everything and sign off gets two things wrong:
+    blocking can push use to personal phones, where it's harder to see, and
+    acceptance isn't the security office's call here.
+  common_traps:
+    - "Blocking all AI and calling it done, which can push use to personal phones, where it's harder to see, and leaves legitimate work with no approved place to go."
+    - "Letting the security office accept risk; it advises, and the data owner or senior management decides."
+    - "Treating State IT, the custodian, as the one who decides how applicant data may be used."
+    - "Treating an AI flag as a decision instead of an input a person reviews."
+    - "Assuming a vendor contract covers features added after it was signed."
+  exam_tip: >-
+    Senior management is ultimately accountable for risk and sets the risk appetite.
+    The owner of the data or process, or management with delegated authority,
+    accepts risk within it. Security assesses and advises. For AI use, the data owner
+    decides whether data may go into a tool and under what rules. The custodian, here
+    State IT, implements and runs the controls that enforce those rules.
+reviewed_by: null
+reviewed_on: null
