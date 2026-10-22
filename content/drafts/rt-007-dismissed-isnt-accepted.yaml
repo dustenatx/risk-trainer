@@ -1,0 +1,236 @@
+id: rt-007-dismissed-isnt-accepted
+version: 1
+status: draft
+title: "Dismissed isn't accepted"
+difficulty: foundational
+estimated_minutes: 8
+cissp_domains: [8, 1]
+learning_objectives:
+  - "Explain why dismissing a scanner alert isn't risk acceptance."
+  - "Identify who may accept a risk: the system's owner, not its custodian."
+  - "Choose a response for each finding instead of handling every alert the same way."
+
+context:
+  organization: "Prairieview Food Network (fictional)"
+  industry: "Nonprofit: a regional food bank"
+  size: "About 60 staff and several hundred volunteers; a two-person web team plus volunteer developers"
+  risk_appetite: "Low tolerance for exposure of donor payment or personal data; moderate tolerance for delays to internal tools."
+  constraints:
+    - "The food bank runs a donation website and a volunteer scheduling app. Every release has to pass the scanner in the build pipeline."
+    - "The spring donation campaign launches Friday. The volunteer development lead proposes dismissing all five open scanner alerts so the pipeline goes green and the release ships."
+    - "Under the food bank's policy, the owner of a system accepts its risks. The Director of Development, who leads fundraising, owns the donation platform. The development lead maintains the systems as their custodian."
+  capacity:
+    remediation_slots: 2
+
+findings:
+  - id: F1
+    title: "Critical advisory in the donation page's form library"
+    description: >-
+      The scanner reports a Critical advisory in the form library the donation page
+      is built on. The page calls the affected function when donors submit their
+      details. A patched version of the library is available, and upgrading takes
+      about a day of work and testing.
+    asset: "Donation page on the public website"
+    exposure: internet_facing
+    signals:
+      cvss_base: 9.1
+      known_exploited: false
+      data_involved: "Donor names, contact details and payment form data"
+      compensating_controls_available:
+        - "Turn off the affected form feature until the upgrade (partial)"
+      remediation_effort: low
+      business_owner: "Director of Development"
+
+  - id: F2
+    title: "Critical advisory in a test tool that runs only in the build pipeline"
+    description: >-
+      The scanner reports a Critical advisory in a testing tool. The tool runs in the
+      build pipeline to check the donation site before release and isn't part of the
+      site that's deployed. The test step has no access to deployment keys and runs
+      on test data only. A newer version fixes the advisory but changes how tests are
+      written, so the web team planned the upgrade for its next maintenance cycle.
+    asset: "Build pipeline test tooling"
+    exposure: internal
+    signals:
+      cvss_base: 9.8
+      known_exploited: false
+      data_involved: "Test data only (no donor data)"
+      compensating_controls_available:
+        - "Run the test step without network access (partial)"
+      remediation_effort: medium
+      business_owner: "Director of Development"
+
+  - id: F3
+    title: "Unused SMS reminder integration built on an unmaintained SDK"
+    description: >-
+      The volunteer scheduling app still contains code that sent shift reminders by
+      text message. Nobody has used it since last year, when volunteers moved to
+      email reminders. The SDK it's built on is no longer maintained and has an open
+      advisory. The SMS provider's API key in the app's settings is still active.
+    asset: "SMS reminder code in the volunteer scheduling app"
+    exposure: third_party
+    signals:
+      cvss_base: 7.5
+      known_exploited: false
+      data_involved: "Volunteer names and phone numbers"
+      compensating_controls_available:
+        - "Limit the SMS API key to the app server's address"
+      remediation_effort: low
+      business_owner: "Volunteer Program Manager"
+
+  - id: F4
+    title: "Flaw in the donor CRM vendor's hosted sign-up widget"
+    description: >-
+      The website's newsletter page, separate from the donation page, embeds a
+      sign-up widget hosted by the food bank's donor CRM vendor. The scanner flags a
+      flaw in the widget's script that could let an attacker alter the widget's own
+      sign-up form. The development lead says it's the vendor's code, so there's
+      nothing to do. The vendor contract has terms on patch timelines, breach
+      notification and liability.
+    asset: "Donor CRM sign-up widget on the website's newsletter page"
+    exposure: third_party
+    signals:
+      cvss_base: 6.1
+      known_exploited: false
+      data_involved: "Donor names and email addresses"
+      compensating_controls_available:
+        - "Remove the widget from the site until the vendor fixes it"
+      remediation_effort: low
+      business_owner: "Director of Development"
+
+  - id: F5
+    title: "Payment processor API key committed to the public repository"
+    description: >-
+      The secret scanner found a live payment processor API key in the donation
+      site's public code repository. A volunteer committed it three weeks ago while
+      testing. The key can read transaction records and issue refunds.
+    asset: "Payment processor account"
+    exposure: internet_facing
+    signals:
+      cvss_base: null
+      known_exploited: false
+      data_involved: "Donation transactions and donor payment records"
+      compensating_controls_available:
+        - "Narrow the key's permissions in the processor's dashboard (partial)"
+      remediation_effort: low
+      business_owner: "Director of Development"
+
+answer_key:
+  findings:
+    F1:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate, mitigate_compensate]
+      key_considerations:
+        - "The page uses the affected function, faces the internet and handles donor payment data, so this finding needs attention now."
+        - "A patched version is available, and the upgrade fits before Friday."
+        - "Turning off the affected feature reduces exposure for a while, but it's a stopgap, not the fix."
+      expert_rationale: >-
+        A Critical label alone doesn't make something a priority, but here the facts
+        make it urgent. The donation page uses the affected function, faces the
+        internet and takes donor payment details, and a patched version is ready.
+        Spend a slot and upgrade before Friday's launch. If the upgrade breaks
+        something, turning off the affected feature buys time while you sort it out.
+        Dismissing this alert to ship on time leaves the campaign's donors exposed.
+      why_not:
+        accept: "A known flaw in code the donation page runs, with a patch ready, is hard to justify under a low appetite for donor payment data."
+        avoid: "Taking the donation page down stops the campaign's fundraising when a patch is ready."
+        transfer: "This is the food bank's own code with a patch ready; there's no contract to shift it to."
+
+    F2:
+      preferred: accept
+      acceptable: [accept]
+      approvers:
+        correct: [business_risk_owner]
+        acceptable: [senior_management]
+      key_considerations:
+        - "Dismissing an alert in the scanner isn't an acceptance. Record the owner's decision, the reason and when it gets reviewed."
+        - "The development lead maintains the platform as custodian; under the food bank's policy, the Director of Development owns its risk."
+        - "Check that the tool doesn't ship before relying on it: confirm the build or package excludes it."
+        - "A build tool can still matter when the pipeline holds deployment keys or handles outside input; here the test step has neither."
+      expert_rationale: >-
+        This is the one to accept, but not the way the development lead proposes. A
+        custodian dismissing an alert in the scanner isn't an acceptance. Under the
+        food bank's policy, the Director of Development owns this platform's risk.
+        First confirm the tool really doesn't ship: check that the build or package
+        excludes it. Then the Director accepts it in writing, with the reason and a
+        review date, and the web team upgrades the tool in the normal cycle. Security
+        assesses and advises; the owner decides.
+      why_not:
+        mitigate_remediate: "Upgrading now spends a slot on a tool that doesn't ship, while F1 and F5 expose donor data."
+        mitigate_compensate: "Isolating the test step further adds little once you've confirmed the tool doesn't ship and the step holds no deployment keys; what's missing is a documented decision."
+        avoid: "The tests still have to run before each release, and the upgrade is already planned."
+
+    F3:
+      preferred: avoid
+      acceptable: [avoid]
+      key_considerations:
+        - "The feature hasn't been used since last year, so the business loses nothing if it goes."
+        - "An unmaintained SDK won't get fixes for this advisory or the next one."
+        - "The API key is still live; revoking it matters as much as deleting the code."
+      expert_rationale: >-
+        Nobody has used text reminders since last year, and the SDK behind them won't
+        get more fixes. Updating code nobody needs wastes effort, and leaving it keeps
+        a live API key and volunteer phone numbers behind an abandoned library. Stop
+        the activity instead: remove the integration code and revoke the API key with
+        the SMS provider. That's avoidance, and it doesn't use a remediation slot. If text
+        reminders come back later, choose a maintained option then.
+      why_not:
+        mitigate_remediate: "Replacing the SDK spends a slot on a feature nobody uses."
+        mitigate_compensate: "Limiting the key still leaves unused code and a live key to look after."
+        accept: "Keeping a live key behind an unmaintained SDK buys nothing, and removing it is cheaper than any fix."
+
+    F4:
+      preferred: transfer
+      acceptable: [transfer, avoid]
+      key_considerations:
+        - "The widget runs on the food bank's website and collects its donors' details, so the risk lands on the food bank whoever wrote the code."
+        - "The contract's terms on patch timelines, breach notification and liability are how to get the vendor to act."
+        - "Liability terms may shift some costs; accountability for donor data stays with the food bank."
+      expert_rationale: >-
+        "Not our code" isn't a reason to dismiss it. The widget sits on your
+        website's newsletter page and collects your donors' details. You can't patch the vendor's code, but
+        the contract gives you levers: report the flaw, hold the vendor to the patch
+        timeline, and confirm the breach-notification and liability terms. The
+        liability terms may shift some costs. Accountability for donor data stays
+        with the food bank. If the vendor is slow, pull the widget until it's fixed.
+      why_not:
+        accept: "\"Not our code\" isn't a reason to dismiss. The flaw is on your page, in front of your donors."
+        mitigate_remediate: "You can't patch the vendor's hosted code; the fix sits with the vendor under the contract."
+
+    F5:
+      preferred: mitigate_remediate
+      acceptable: [mitigate_remediate]
+      key_considerations:
+        - "A public repo may already have been cloned or scraped, so treat the key as exposed."
+        - "Rotating the key is the fix; removing it from history is cleanup."
+        - "Check the processor's logs for any use of the key."
+      expert_rationale: >-
+        Assume someone already has this key. The repo is public, and public repos get
+        cloned and scraped by people looking for exactly this. Rotating the key is the
+        fix, and it takes the second slot. Then check the processor's logs for any use
+        of the old key and tell the Director of Development what you find. Removing
+        the key from history is cleanup; it doesn't reach copies already made. Add a
+        secret check before commits so the next one gets caught earlier.
+      why_not:
+        accept: "A live payment key in a public repo is hard to justify under a low appetite for donor payment data, whoever signs."
+        mitigate_compensate: "Narrowing the key's permissions leaves a leaked key working; rotating it is what stops its use."
+
+  overall_debrief: >-
+    The development lead's plan handles every alert the same way: dismiss it and
+    ship. Each one needs its own response. The two slots go to F1 and F5, where donor
+    payment data is exposed now. F3 is removed, not fixed. F4 goes back to the vendor
+    under the contract, and the food bank keeps accountability for its donors' data.
+    Only F2 suits acceptance, and only when its owner, the Director of Development,
+    accepts it in writing with a reason and a review date. A dismissed alert is none
+    of these.
+  common_traps:
+    - "Dismissing alerts in the scanner so the pipeline goes green and calling it acceptance."
+    - "Letting the custodian, here the development lead, accept a risk the system's owner should decide on."
+    - "Ranking by severity label instead of by use, exposure and data: one Critical matters now, the other can wait."
+    - "Treating a vendor's flaw as someone else's problem when it runs on your page and touches your donors' data."
+  job_tip: >-
+    If you aren't fixing a finding, write down why, who decided and when it gets
+    looked at again. A dismissed alert with no record looks the same as one nobody
+    read.
+reviewed_by: null
+reviewed_on: null
