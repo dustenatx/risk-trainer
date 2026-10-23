@@ -175,6 +175,11 @@ jobs:
     # Not a required check yet; Playwright browser tests for the exercise form (R6).
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # Browsers and their system deps are baked in, so there's no apt or browser download.
+    # The tag must match playwright in uv.lock (R14 test).
+    container:
+      image: mcr.microsoft.com/playwright/python:v1.63.0-noble@sha256:72bd171a9ffc2b4b59532aaa6210e21014d07093120dc25528870c0b840da1f0
+      options: --user 1001
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -182,7 +187,6 @@ jobs:
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
       - name: Install
         run: uv sync --locked
-      - name: Install Chromium
-        run: uv run playwright install --with-deps chromium
+      # The image has no make; this is the Makefile's e2e recipe (R14 test keeps them equal).
       - name: Browser tests (pytest -m e2e)
-        run: make e2e
+        run: uv run pytest -m e2e tests/e2e
