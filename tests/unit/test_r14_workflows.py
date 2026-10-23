@@ -1,6 +1,7 @@
 """R14 — CI/CD: OIDC only, plan on merge to main, apply gated by the protected prod environment."""
 
 import re
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ import yaml
 from tests.helpers import REPO_ROOT
 
 WORKFLOWS = REPO_ROOT / ".github" / "workflows"
+CI = WORKFLOWS / "ci.yml"
 DEPLOY = WORKFLOWS / "deploy.yml"
 TERRAFORM_JOBS = ("plan", "apply")
 
@@ -103,6 +105,41 @@ def test_r14_smoke_checkout_includes_static_files() -> None:
     smoke = load(DEPLOY)["jobs"]["smoke"]
     (checkout,) = [s for s in steps(smoke) if "checkout" in s.get("uses", "")]
     assert set(checkout.get("with", {})) <= {"persist-credentials"}
+
+
+def locked_playwright_version() -> str:
+    lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
+    (version,) = [p["version"] for p in lock["package"] if p["name"] == "playwright"]
+    return str(version)
+
+
+def test_r14_e2e_runs_in_playwright_image_matching_lock() -> None:
+    # The image ships the browsers for one Playwright release; a mismatch fails at launch.
+    container = load(CI)["jobs"]["e2e"]["container"]
+    image = re.escape(f"mcr.microsoft.com/playwright/python:v{locked_playwright_version()}-noble")
+    assert re.fullmatch(image + r"@sha256:[0-9a-f]{64}", container["image"]), container["image"]
+    assert container["options"] == "--user 1001"
+
+
+def test_r14_e2e_installs_no_browsers_and_stays_read_only() -> None:
+    workflow = load(CI)
+    e2e = workflow["jobs"]["e2e"]
+    assert e2e["runs-on"] == "ubuntu-24.04"
+    assert e2e["timeout-minutes"] <= 10
+    assert e2e.get("permissions", workflow["permissions"]) == {"contents": "read"}
+    for step in steps(e2e):
+        run = step.get("run", "")
+        assert "playwright install" not in run and "apt-get" not in run, step.get("name")
+        assert "actions/cache" not in step.get("uses", ""), step.get("uses")
+
+
+def test_r14_e2e_command_matches_makefile_recipe() -> None:
+    makefile = (REPO_ROOT / "Makefile").read_text(encoding="utf-8")
+    match = re.search(r"^e2e:\n((?:\t.*\n)+)", makefile, re.MULTILINE)
+    assert match, "Makefile has no e2e recipe"
+    recipe = "\n".join(line.removeprefix("\t") for line in match.group(1).splitlines())
+    (test_step,) = [s for s in steps(load(CI)["jobs"]["e2e"]) if "pytest" in s.get("run", "")]
+    assert test_step["run"].strip() == recipe
 
 
 def test_r14_no_template_expressions_inside_run_scripts() -> None:
