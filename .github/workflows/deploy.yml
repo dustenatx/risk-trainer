@@ -27,7 +27,7 @@ env:
 
 jobs:
   plan:
-    name: plan
+    name: Terraform plan (prod)
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -86,7 +86,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   apply:
-    name: apply
+    name: Apply to prod (needs approval)
     needs: plan
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -128,7 +128,7 @@ jobs:
         run: terraform -chdir="$TF_DIR" output
 
   smoke:
-    name: smoke
+    name: Smoke checks (read-only)
     needs: apply
     runs-on: ubuntu-24.04
     timeout-minutes: 10
