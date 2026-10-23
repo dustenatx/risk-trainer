@@ -2,7 +2,6 @@
 name = "risk-trainer"
 version = "0.1.0"
 description = "Hosted, no-login web app that teaches security risk prioritization."
-readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "boto3>=1.43.108",

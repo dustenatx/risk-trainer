@@ -1,5 +1,6 @@
 """R14 — the build packages approved scenarios only, and fails on any invalid approved one."""
 
+import tomllib
 import zipfile
 from pathlib import Path
 from typing import Any
@@ -138,6 +139,17 @@ def test_r14_makefile_package_target_uses_rt_package() -> None:
     assert "uv export --locked --no-dev" in makefile
     assert "--python-platform aarch64-manylinux2014 --python-version 3.14" in makefile
     assert "rt package --site-packages" in makefile
+
+
+def test_r14_readme_and_docs_cannot_change_the_package() -> None:
+    # The Makefile unpacks the app's wheel into the zip, so anything hatchling copies into
+    # dist-info/METADATA (the readme becomes the long description) changes the Lambda hash.
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    project = pyproject["project"]
+    assert "readme" not in project
+    assert "readme" not in project.get("dynamic", [])
+    hatch = str(pyproject.get("tool", {}).get("hatch", {}))
+    assert "README" not in hatch and "docs" not in hatch
 
 
 def test_r14_live_content_packages(tmp_path: Path) -> None:
