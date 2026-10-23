@@ -1,6 +1,6 @@
 id: rt-007-dismissed-isnt-accepted
 version: 1
-status: draft
+status: approved
 title: "Dismissed isn't accepted"
 difficulty: foundational
 estimated_minutes: 8
@@ -232,5 +232,5 @@ answer_key:
     If you aren't fixing a finding, write down why, who decided and when it gets
     looked at again. A dismissed alert with no record looks the same as one nobody
     read.
-reviewed_by: null
-reviewed_on: null
+reviewed_by: "Dusten Harrison"
+reviewed_on: 2026-10-23
