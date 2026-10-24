@@ -144,10 +144,14 @@ def test_r14_makefile_package_target_uses_rt_package() -> None:
 def test_r14_readme_and_docs_cannot_change_the_package() -> None:
     # The Makefile unpacks the app's wheel into the zip, so anything hatchling copies into
     # dist-info/METADATA (the readme becomes the long description) changes the Lambda hash.
+    # LICENSE is the one repo file that travels in dist-info/licenses/, as MIT asks; it is
+    # listed explicitly so hatchling's default globs (NOTICE*, AUTHORS*, ...) add nothing.
     pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     project = pyproject["project"]
     assert "readme" not in project
     assert "readme" not in project.get("dynamic", [])
+    assert project["license"] == "MIT"
+    assert project["license-files"] == ["LICENSE"]
     hatch = str(pyproject.get("tool", {}).get("hatch", {}))
     assert "README" not in hatch and "docs" not in hatch
 
