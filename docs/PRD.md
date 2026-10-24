@@ -4,7 +4,7 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.12 — 23 Oct 2026 (changes to `README.md` or files under `docs/` no longer change the Lambda package (R14)) |
+| Version | 1.13 — 24 Oct 2026 (the package carries the MIT `LICENSE` in the app's dist-info (R14)) |
 | Status | Owner-reviewed and spec-reviewed; groups 5.1–5.4 built; v1 launched 6 Oct 2026; v1.1 in progress (authoring MCP server merged 14 Oct; two scenarios drafted through it still to come); read-only smoke checks run after each deploy. |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
@@ -193,7 +193,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 - Deployments SHALL use GitHub Actions with OIDC federation to AWS; no long-lived AWS keys.
 - WHEN a change merges to `main`, THEN CI SHALL produce a Terraform plan, and apply SHALL wait for manual approval through a protected GitHub environment.
 - WHEN apply succeeds, THEN CI SHALL run read-only smoke checks (GET only) against the deployed URL, with no AWS credentials or secrets: security headers, a scenario page with five findings, and the stylesheet served `immutable` under the commit's static asset version. They SHALL NOT submit a form or record an attempt.
-- The build SHALL package only `approved` scenarios (`rt package`). IF any approved scenario fails validation, THEN the build SHALL fail and write no package. The same inputs SHALL produce a byte-identical package. Changes to `README.md` or files under `docs/` SHALL NOT change the package.
+- The build SHALL package only `approved` scenarios (`rt package`). IF any approved scenario fails validation, THEN the build SHALL fail and write no package. The same inputs SHALL produce a byte-identical package. Changes to `README.md` or files under `docs/` SHALL NOT change the package. The package SHALL include the repository's `LICENSE` file in the app's dist-info, so a change to `LICENSE` changes the package.
 
 **R15 — Observability and cost.**
 - Logs SHALL be structured JSON with a request ID. Rationale text SHALL never be logged.

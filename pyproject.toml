@@ -3,6 +3,8 @@ name = "risk-trainer"
 version = "0.1.0"
 description = "Hosted, no-login web app that teaches security risk prioritization."
 requires-python = ">=3.14"
+license = "MIT"
+license-files = ["LICENSE"]
 dependencies = [
     "boto3>=1.43.108",
     "fastapi>=0.142.2",
