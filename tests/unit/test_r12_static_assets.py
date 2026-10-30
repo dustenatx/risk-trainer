@@ -32,6 +32,8 @@ INTER_SHA256 = {
     ),
     "OFL-Inter.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
 }
+# The Bearing Quest lockup, copied unedited (docs/decisions.md, 2026-10-29).
+LOCKUP_SHA256 = "723322e0e64f7e6e91877b5122746f09a9f4e6198e7b62910b25097e3d67b9d5"
 
 
 class _AssetRefs(HTMLParser):
@@ -158,3 +160,8 @@ def test_r12_all_four_fonts_are_present() -> None:
 @pytest.mark.parametrize(("name", "digest"), INTER_SHA256.items())
 def test_r12_inter_files_match_pinned_sha256(name: str, digest: str) -> None:
     assert hashlib.sha256((STATIC_DIR / "fonts" / name).read_bytes()).hexdigest() == digest
+
+
+def test_r12_lockup_matches_pinned_sha256() -> None:
+    lockup = (STATIC_DIR / "bearing-quest-lockup.svg").read_bytes()
+    assert hashlib.sha256(lockup).hexdigest() == LOCKUP_SHA256
