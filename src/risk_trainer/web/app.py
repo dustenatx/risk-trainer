@@ -32,8 +32,9 @@ WEB_DIR = Path(__file__).resolve().parent
 STATIC_DIR = WEB_DIR / "static"
 SESSION_COOKIE = "rt_session"
 
-# Python 3.14 already maps .woff2; this keeps it right if the host's mime.types differs.
+# Python 3.14 already maps .woff2 and .svg; this keeps them right if the host's mime.types differs.
 mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("image/svg+xml", ".svg")
 
 EXPOSURE_LABELS = {
     Exposure.INTERNET_FACING: "Internet-facing",

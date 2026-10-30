@@ -4,7 +4,7 @@
 |---|---|
 | Working name | Risk Trainer ("Fix Two of Five") |
 | Owner | Dusten Harrison, CISSP |
-| Version | 1.14 — 29 Oct 2026 (Bearing Quest project family, light path: Inter UI font and family footer (§6)) |
+| Version | 1.15 — 29 Oct 2026 (the Bearing Quest family strip at the top of every page replaces the footer mark (§6)) |
 | Status | Owner-reviewed and spec-reviewed; groups 5.1–5.4 built; v1 launched 6 Oct 2026; v1.1 in progress (authoring MCP server merged 14 Oct; two scenarios drafted through it still to come); read-only smoke checks run after each deploy. |
 | Build path | Claude Code (plan mode) builds; a read-only Claude review agent, CodeQL and Semgrep review each pull request in GitHub Actions; the owner approves. See the Risk Trainer Build Guide. |
 | Cost constraint | $0 beyond the owner's Claude subscription |
@@ -252,7 +252,7 @@ Acceptance criteria use EARS-style phrasing. "The system" means the deployed web
 | Performance | p95 server time under 500 ms for web routes at demo load (warm). Cold starts of up to about 5 s are acceptable for v1. |
 | Cost | $0 target: AWS always-free limits, CloudFront Free flat-rate plan where eligible, no paid APIs, no custom domain in v1. The hard ceilings in R13 and R15 cap spend; budget alerts only detect drift. |
 | Accessibility | WCAG 2.2 AA target: labels on all inputs, visible focus, color never the only signal, usable at 360 px. Text contrast at least 4.5:1, and UI component and focus contrast at least 3:1, in both the light and dark themes. The theme follows the device by default; an Auto/Light/Dark switch persists the choice per browser and is hidden without JavaScript. The sticky remediation-slot bar does not hide the focused element (2.4.11). |
-| Typography and footer | UI and body text use self-hosted Inter (Latin subset, SIL OFL 1.1), and code and labels use self-hosted IBM Plex Mono (R12). Every page's footer shows the Bearing Quest mark at 24 px beside the text "Part of the Bearing Quest project family." The mark is decorative (`aria-hidden`), so the text is its label. It uses the footer text's color token, at least 3:1 against the footer background in both themes. Bearing Quest is a project family; the site never describes it as a company. |
+| Typography and family strip | UI and body text use self-hosted Inter (Latin subset, SIL OFL 1.1), and code and labels use self-hosted IBM Plex Mono (R12). Every page starts with a thin Bearing Quest family strip above the masthead. It holds the full-colour Bearing Quest lockup, a self-hosted static SVG with alt text "Bearing Quest", and the text "project family". The strip has fixed dark colors in both themes, its text is at least 4.5:1 against its background, and it contains nothing focusable, so the skip link stays the first tab stop. The footer carries no family line. Bearing Quest is a project family; the site never describes it as a company. |
 | Maintainability | Python 3.14 (the newest GA Lambda managed runtime as of Oct 2026), fully typed; mypy strict on `risk_trainer/domain` and `risk_trainer/content`; test coverage ≥ 85% on the domain and content packages. |
 | Error handling | Typed domain exceptions; no stack traces shown to users; error pages show a correlation ID that matches the logs. |
 

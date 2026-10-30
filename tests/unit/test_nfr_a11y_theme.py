@@ -90,13 +90,13 @@ def test_nfr_a11y_contrast_masthead() -> None:
     assert contrast(tagline.group(1), ground.group(1)) >= 4.5
 
 
-def test_nfr_a11y_family_mark_uses_footer_text_color() -> None:
-    """The footer mark is 24px in the footer text's token, so the muted/bg pair above covers it."""
-    mark = block(r"\.bq-mark")
-    assert "color: var(--muted);" in mark
-    assert "width: 24px;" in mark and "height: 24px;" in mark
-    assert "color: var(--muted);" in block(r"\.site-footer")
-    assert ("muted", "bg") in TEXT_PAIRS
+def test_nfr_a11y_contrast_family_strip() -> None:
+    """The Bearing Quest strip is dark in both themes. Its border (#1C3A4F) is decoration only."""
+    strip = block(r"\.bq-strip")
+    ground = re.search(rf"background:\s*({HEX})", strip)
+    text = re.search(rf"(?<![-\w])color:\s*({HEX})", strip)
+    assert ground and text
+    assert contrast(text.group(1), ground.group(1)) >= 4.5
 
 
 def test_nfr_a11y_focus_ring() -> None:
