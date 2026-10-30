@@ -2,9 +2,9 @@
    theme switch (theme.js) sets data-theme on <html>. Contrast is checked in
    tests/unit/test_nfr_a11y_theme.py. */
 
-@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/IBMPlexSans-Regular-Latin1.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/IBMPlexSans-Medium-Latin1.woff2") format("woff2"); }
-@font-face { font-family: "IBM Plex Sans"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/IBMPlexSans-SemiBold-Latin1.woff2") format("woff2"); }
+/* Inter v4.1, subset to this unicode-range (docs/decisions.md, 2026-10-29). */
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/Inter-Regular-Latin1.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2022, U+2026, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Inter"; font-style: normal; font-weight: 600; font-display: swap; src: url("fonts/Inter-SemiBold-Latin1.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2013-2014, U+2018-201D, U+2022, U+2026, U+20AC, U+2122, U+2212; }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 400; font-display: swap; src: url("fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2"); }
 @font-face { font-family: "IBM Plex Mono"; font-style: normal; font-weight: 500; font-display: swap; src: url("fonts/IBMPlexMono-Medium-Latin1.woff2") format("woff2"); }
 
@@ -23,7 +23,7 @@
   --error: #B42318;
   --draft: #8A4B00;
   --draft-bg: #FFF4E5;
-  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --page: 52rem;
   color-scheme: light;
@@ -139,6 +139,9 @@ a { color: var(--accent); }
 
 .site-footer { color: var(--muted); font-size: .9rem; padding-bottom: 2rem; }
 .site-footer p { border-top: 1px solid var(--border); padding-top: 1rem; margin: 0; }
+/* Bearing Quest family line: the mark is decorative and takes the footer text's color. */
+.site-footer .family { display: flex; align-items: center; gap: .5rem; border-top: 0; padding-top: .75rem; }
+.bq-mark { width: 24px; height: 24px; flex: none; color: var(--muted); }
 
 /* Buttons */
 .button, .exercise button[type="submit"] {
