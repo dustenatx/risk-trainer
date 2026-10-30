@@ -2,6 +2,7 @@
 from the edge cache, and the versioned mount never serves anything outside static/."""
 
 import asyncio
+import hashlib
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -21,6 +22,16 @@ from tests.web_helpers import RT001_ID, STATIC_VERSION, client, static_path
 OTHER_VERSION = "0123456789ab"
 PAGES = ["/", f"/s/{RT001_ID}", "/responses", "/about", "/privacy", "/no-such-page"]
 FONTS = sorted(path.name for path in (STATIC_DIR / "fonts").glob("*.woff2"))
+# Inter v4.1 Latin subsets and its license, as recorded in docs/decisions.md (2026-10-29).
+INTER_SHA256 = {
+    "Inter-Regular-Latin1.woff2": (
+        "f8cb1a8297bbafb8bdee0d85096e94509e0bdbc8c0fcf11d836c9577fe1037ca"
+    ),
+    "Inter-SemiBold-Latin1.woff2": (
+        "da0bf9afabea47b878a79a029468e86157897af11818c6c71bc97b18934a8075"
+    ),
+    "OFL-Inter.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
+}
 
 
 class _AssetRefs(HTMLParser):
@@ -83,7 +94,7 @@ def test_r12_other_version_gets_current_file_uncached() -> None:
     "path",
     [
         "/static/app.css",
-        "/static/fonts/IBMPlexSans-Regular-Latin1.woff2",
+        "/static/fonts/Inter-Regular-Latin1.woff2",
         f"/static/{STATIC_VERSION}/missing.css",
         f"/static/{OTHER_VERSION}/missing.css",
         f"/static/{STATIC_VERSION.upper()}/app.css",
@@ -135,11 +146,15 @@ def test_r12_fonts_are_served_as_woff2(font: str) -> None:
     assert response.content[:4] == b"wOF2"
 
 
-def test_r12_all_five_fonts_are_present() -> None:
+def test_r12_all_four_fonts_are_present() -> None:
     assert FONTS == [
         "IBMPlexMono-Medium-Latin1.woff2",
         "IBMPlexMono-Regular-Latin1.woff2",
-        "IBMPlexSans-Medium-Latin1.woff2",
-        "IBMPlexSans-Regular-Latin1.woff2",
-        "IBMPlexSans-SemiBold-Latin1.woff2",
+        "Inter-Regular-Latin1.woff2",
+        "Inter-SemiBold-Latin1.woff2",
     ]
+
+
+@pytest.mark.parametrize(("name", "digest"), INTER_SHA256.items())
+def test_r12_inter_files_match_pinned_sha256(name: str, digest: str) -> None:
+    assert hashlib.sha256((STATIC_DIR / "fonts" / name).read_bytes()).hexdigest() == digest

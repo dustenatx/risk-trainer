@@ -90,6 +90,15 @@ def test_nfr_a11y_contrast_masthead() -> None:
     assert contrast(tagline.group(1), ground.group(1)) >= 4.5
 
 
+def test_nfr_a11y_family_mark_uses_footer_text_color() -> None:
+    """The footer mark is 24px in the footer text's token, so the muted/bg pair above covers it."""
+    mark = block(r"\.bq-mark")
+    assert "color: var(--muted);" in mark
+    assert "width: 24px;" in mark and "height: 24px;" in mark
+    assert "color: var(--muted);" in block(r"\.site-footer")
+    assert ("muted", "bg") in TEXT_PAIRS
+
+
 def test_nfr_a11y_focus_ring() -> None:
     rule = r":focus-visible\s*\{\s*outline: 3px solid var\(--focus\); outline-offset: 2px;"
     assert re.search(rule, CSS)
@@ -106,7 +115,8 @@ def test_r12_fonts_self_hosted() -> None:
     for url in urls:
         assert _same_origin(url), url
         assert (STATIC_DIR / url).is_file(), url
-    for name in ("OFL-IBM-Plex-Sans.txt", "OFL-IBM-Plex-Mono.txt"):
+    assert '--sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;' in CSS
+    for name in ("OFL-Inter.txt", "OFL-IBM-Plex-Mono.txt"):
         assert "SIL Open Font License" in (STATIC_DIR / "fonts" / name).read_text(encoding="utf-8")
 
 
